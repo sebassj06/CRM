@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Notas</h1>
+    <a href="/notas/nuevo">Agregar nota</a><br><br>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Nota</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for nota, nombre_cliente in notas %}
+                <tr>
+                    <td><a href="/notas/{{ nota[0] }}">{{ nombre_cliente }}</a></td>
+                    <td>{{ nota[2] }}</td>
+                    <td>{{ nota[3] }}</td>
+                    <td>
+                        <a href="/notas/{{ nota[0] }}/editar">Editar</a>
+                        <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline">
+                            <input type="submit" value="Eliminar">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

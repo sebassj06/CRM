@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Proyectos</h1>
+    <a href="/proyectos/nuevo">Agregar proyecto</a><br><br>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Entrega</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for proyecto, nombre_cliente in proyectos %}
+                <tr>
+                    <td><a href="/proyectos/{{ proyecto[0] }}">{{ proyecto[1] }}</a></td>
+                    <td>{{ nombre_cliente }}</td>
+                    <td>{{ proyecto[3] }}</td>
+                    <td>{{ proyecto[4] }}</td>
+                    <td>
+                        <a href="/proyectos/{{ proyecto[0] }}/editar">Editar</a>
+                        <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline">
+                            <input type="submit" value="Eliminar">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token()}}">
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

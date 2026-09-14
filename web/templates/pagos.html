@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Pagos</h1>
+    <a href="/pagos/nuevo">Agregar pago</a><br><br>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Proyecto</th>
+                <th>Monto</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pago, titulo_proyecto in pagos %}
+                <tr>
+                    <td><a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a></td>
+                    <td>${{ pago[2] }}</td>
+                    <td>{{ pago[3] }}</td>
+                    <td>
+                        <a href="/pagos/{{ pago[0] }}/editar">Editar</a>
+                        <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline">
+                            <input type="submit" value="Eliminar">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

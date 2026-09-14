@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Importar clientes</h1>
+
+    <div class="tarjeta">
+        <p>Subí un archivo <strong>.csv</strong> o <strong>.xlsx</strong> (Excel) con estas columnas en la primera fila (el orden no importa, pero los nombres de columna sí deben ser exactos):</p>
+        <p><code>nombre,email,telefono,empresa,notas,cliente_desde</code></p>
+        <p><code>nombre</code> y <code>email</code> son obligatorios; el resto puede ir vacío. <code>cliente_desde</code> es opcional (fecha desde la que trabajás con ese cliente).</p>
+        <p>Si un cliente del archivo ya existe en tu agencia (mismo email), esa fila se omite y no se duplica.</p>
+        <p>¿No tenés el archivo listo? <a href="/clientes/importar/plantilla">Descargá la plantilla en Excel</a>, completala como una planilla normal, y subila acá.</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="formulario">
+        <div class="campo">
+            <label for="archivo_csv">Archivo (.csv o .xlsx)</label>
+            <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv,.xlsx">
+        </div>
+        <input type="submit" value="Importar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </form>
+
+    <div class="acciones">
+        <a href="/clientes">← Volver a clientes</a>
+    </div>
+{% endblock %}

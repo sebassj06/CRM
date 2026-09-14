@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Nota</h1>
+
+    <div class="tarjeta">
+        <dl>
+            <dt>Cliente</dt>
+            <dd>{{ nombre_cliente }}</dd>
+            <dt>Contenido</dt>
+            <dd>{{ nota[2] }}</dd>
+            <dt>Fecha</dt>
+            <dd>{{ nota[3] }}</dd>
+        </dl>
+    </div>
+
+    <div class="acciones">
+        <a href="/notas/{{ nota[0] }}/editar">Editar</a>
+        <a href="/notas">← Volver a notas</a>
+    </div>
+{% endblock %}

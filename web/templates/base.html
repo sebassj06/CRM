@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>CRM Agencia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-marca">CRM Agencia</div>
+            <nav>
+                <a href="/">Inicio</a>
+                <a href="/clientes">Clientes</a>
+                <a href="/proyectos">Proyectos</a>
+                <a href="/pagos">Pagos</a>
+                <a href="/notas">Notas</a>
+            </nav>
+            <div class="sidebar-sesion">
+                {% if session.usuario %}
+                    <p>Hola, {{ session.usuario }}</p>
+                    <a href="/logout">Cerrar sesion</a>
+                {% else %}
+                    <a href="/login">Iniciar sesion</a>
+                {% endif %}
+            </div>
+        </aside>
+        <main class="contenido">
+            {% with mensajes = get_flashed_messages(with_categories=true) %}
+                {% if mensajes %}
+                    <div class="flash-contenedor">
+                        {% for categoria, mensaje in mensajes %}
+                            <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if cliente %}
+        <h1>Editar cliente</h1>
+    {% else %}
+        <h1>Nuevo cliente</h1>
+    {% endif %}
+
+    <form method="POST" class="formulario">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="campo">
+            <label for="nombre">Nombre</label>
+            <input type="text" id="nombre" name="nombre" value="{{ cliente[1] if cliente else '' }}">
+        </div>
+        <div class="campo">
+            <label for="email">Email</label>
+            <input type="text" id="email" name="email" value="{{ cliente[2] if cliente else '' }}">
+        </div>
+        <div class="campo">
+            <label for="telefono">Teléfono</label>
+            <input type="text" id="telefono" name="telefono" value="{{ cliente[3] if cliente else '' }}">
+        </div>
+        <div class="campo">
+            <label for="empresa">Empresa</label>
+            <input type="text" id="empresa" name="empresa" value="{{ cliente[4] if cliente else '' }}">
+        </div>
+        <div class="campo">
+            <label for="notas">Notas</label>
+            <input type="text" id="notas" name="notas" value="{{ cliente[5] if cliente else '' }}">
+        </div>
+
+        {% if cliente %}
+            <input type="submit" value="Guardar cambios">
+        {% else %}
+            <input type="submit" value="Guardar">
+        {% endif %}
+    </form>
+{% endblock %}

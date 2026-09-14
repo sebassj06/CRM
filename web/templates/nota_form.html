@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if nota %}
+        <h1>Editar nota</h1>
+    {% else %}
+        <h1>Nueva nota</h1>
+
+        <form method="POST" action="/notas/generar-ia" class="formulario">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="campo">
+                <label for="cliente_id_ia">Cliente</label>
+                <select id="cliente_id_ia" name="cliente_id">
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente[0] }}" {% if cliente_id_seleccionado and cliente[0]|string == cliente_id_seleccionado %}selected{% endif %}>{{ cliente[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="campo">
+                <label for="palabras_clave">Palabras clave</label>
+                <input type="text" id="palabras_clave" name="palabras_clave">
+            </div>
+            <input type="submit" value="Generar borrador con IA">
+        </form>
+        <hr>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('nueva_nota') }}" class="formulario">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="campo">
+            <label for="cliente_id">Cliente</label>
+            <select id="cliente_id" name="cliente_id">
+                {% for cliente in clientes %}
+                    <option value="{{ cliente[0] }}" {% if nota and cliente[0] == nota[1] %}selected{% elif cliente_id_seleccionado and cliente[0]|string == cliente_id_seleccionado %}selected{% endif %}>{{ cliente[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="campo">
+            <label for="contenido">Contenido</label>
+            <textarea id="contenido" name="contenido" rows="4" cols="50">{{ nota[2] if nota else (borrador_ia if borrador_ia else '') }}</textarea>
+        </div>
+        <div class="campo">
+            <label for="fecha">Fecha</label>
+            <input type="date" id="fecha" name="fecha" value="{{ nota[3] if nota else fecha_hoy }}">
+        </div>
+
+        {% if nota %}
+            <input type="submit" value="Guardar cambios">
+        {% else %}
+            <input type="submit" value="Guardar">
+        {% endif %}
+    </form>
+{% endblock %}

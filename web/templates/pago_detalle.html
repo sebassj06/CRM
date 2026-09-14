@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Pago</h1>
+
+    <div class="tarjeta">
+        <dl>
+            <dt>Proyecto</dt>
+            <dd>{{ titulo_proyecto }}</dd>
+            <dt>Monto</dt>
+            <dd>${{ pago[2] }}</dd>
+            <dt>Fecha</dt>
+            <dd>{{ pago[3] }}</dd>
+        </dl>
+    </div>
+
+    <div class="acciones">
+        <a href="/pagos/{{ pago[0] }}/editar">Editar</a>
+        <a href="/pagos">← Volver a pagos</a>
+    </div>
+{% endblock %}

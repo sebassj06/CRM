@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Iniciar sesión</h1>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" class="formulario">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        Usuario: <input type="text" name="nombre_usuario"><br>
+        Contraseña: <input type="password" name="contraseña"><br>
+        <input type="submit" value="Entrar">
+    </form>
+{% endblock %}

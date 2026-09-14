@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Cliente</h1>
+
+    <div class="tarjeta">
+        <dl>
+            <dt>Nombre</dt>
+            <dd>{{ cliente[1] }}</dd>
+            <dt>Email</dt>
+            <dd>{{ cliente[2] }}</dd>
+        </dl>
+    </div>
+
+    <div class="acciones">
+        <a href="/clientes/{{ cliente[0] }}/editar">Editar</a>
+        <a href="/clientes">← Volver a clientes</a>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Notas</h2>
+        {% if notas %}
+            <ul>
+                {% for nota in notas %}
+                    <li>({{ nota[3] }}) {{ nota[2] }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Este cliente todavía no tiene notas.</p>
+        {% endif %}
+
+        <form method="POST" action="/clientes/{{ cliente[0] }}/resumen-ia">
+            <input type="submit" value="Generar resumen con IA">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+
+        {% if resumen %}
+            <h3>Resumen generado por IA</h3>
+            <p>{{ resumen }}</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <h2>Redacción de correo asistida</h2>
+        <form method="POST" action="/clientes/{{ cliente[0] }}/correo-ia/generar">
+            <div class="campo">
+                <label for="asunto">Asunto</label>
+                <input type="text" id="asunto" name="asunto">
+            </div>
+            <div class="campo">
+                <label for="palabras_clave">Palabras clave</label>
+                <input type="text" id="palabras_clave" name="palabras_clave">
+            </div>
+            <input type="submit" value="Generar borrador de correo con IA">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+
+        {% if cuerpo_borrador %}
+            <form method="POST" action="/clientes/{{ cliente[0] }}/correo-ia/enviar">
+                <div class="campo">
+                    <label for="asunto_revision">Asunto</label>
+                    <input type="text" id="asunto_revision" name="asunto" value="{{ asunto_borrador }}">
+                </div>
+                <div class="campo">
+                    <label for="cuerpo">Cuerpo</label>
+                    <textarea id="cuerpo" name="cuerpo" rows="6" cols="50">{{ cuerpo_borrador }}</textarea>
+                </div>
+                <input type="submit" value="Enviar correo">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+        {% endif %}
+
+        {% if mensaje_envio %}
+            <p>{{ mensaje_envio }}</p>
+        {% endif %}
+    </div>
+{% endblock %}

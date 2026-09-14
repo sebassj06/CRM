@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Proyecto</h1>
+
+    <div class="tarjeta">
+        <dl>
+            <dt>Título</dt>
+            <dd>{{ proyecto[1] }}</dd>
+            <dt>Cliente</dt>
+            <dd>{{ nombre_cliente }}</dd>
+            <dt>Estado</dt>
+            <dd>{{ proyecto[3] }}</dd>
+            <dt>Entrega</dt>
+            <dd>{{ proyecto[4] }}</dd>
+        </dl>
+    </div>
+
+    <div class="acciones">
+        <a href="/proyectos/{{ proyecto[0] }}/editar">Editar</a>
+        <a href="/proyectos">← Volver a proyectos</a>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Pagos</h2>
+        {% if pagos %}
+            <ul>
+                {% for pago in pagos %}
+                    <li>${{ pago[2] }} - {{ pago[3] }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Este proyecto todavía no tiene pagos registrados.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <h2>Sugerencias de IA</h2>
+        <form method="POST" action="/proyectos/{{ proyecto[0] }}/sugerencias-ia">
+            <input type="submit" value="Generar sugerencias con IA">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+
+        {% if sugerencias %}
+            <p>{{ sugerencias }}</p>
+        {% endif %}
+    </div>
+{% endblock %}
