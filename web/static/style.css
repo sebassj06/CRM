@@ -434,6 +434,17 @@ tbody tr:hover {
     background-color: var(--color-bg);
 }
 
+tbody td:first-child a {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-heading);
+    text-decoration: none;
+}
+
+tbody td:first-child a:hover {
+    text-decoration: underline;
+}
+
 .texto-truncado {
     display: inline-block;
     max-width: 400px;
