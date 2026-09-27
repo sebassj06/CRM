@@ -47,5 +47,28 @@ function inicializarBotonesCarga() {
     });
 }
 
+function inicializarMenuMobile() {
+    const boton = document.getElementById('boton-menu');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('overlay-menu');
+
+    if (!boton || !sidebar || !overlay) {
+        return;
+    }
+
+    function cerrarMenu() {
+        sidebar.classList.remove('abierto');
+        overlay.classList.remove('visible');
+    }
+
+    boton.addEventListener('click', function () {
+        sidebar.classList.toggle('abierto');
+        overlay.classList.toggle('visible');
+    });
+
+    overlay.addEventListener('click', cerrarMenu);
+}
+
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
 document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
+document.addEventListener('DOMContentLoaded', inicializarMenuMobile);

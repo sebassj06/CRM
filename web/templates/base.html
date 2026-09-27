@@ -16,6 +16,7 @@
 </head>
 <body>
     <div class="layout">
+        <div id="overlay-menu" class="overlay-menu"></div>
         <aside class="sidebar">
             <div class="sidebar-marca">CRM Agencia</div>
             <nav>
@@ -29,6 +30,7 @@
         </aside>
         <div class="area-principal">
             <header class="topbar">
+                <button type="button" id="boton-menu" class="btn btn-secundario boton-menu" aria-label="Abrir menú">☰</button>
                 <button type="button" id="boton-tema" class="btn btn-secundario">Modo oscuro</button>
                 {% if session.usuario %}
                     <span class="topbar-usuario">{% if agencia_actual %}{{ agencia_actual }} · {% endif %}Hola, {{ session.usuario }}</span>
