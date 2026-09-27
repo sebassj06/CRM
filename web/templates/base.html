@@ -2,6 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
+        <script>
+        if (localStorage.getItem('tema') === 'oscuro') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
     <title>CRM Agencia</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,27 +24,31 @@
                 <a href="/pagos">Pagos</a>
                 <a href="/notas">Notas</a>
             </nav>
-            <div class="sidebar-sesion">
+        </aside>
+        <div class="area-principal">
+            <header class="topbar">
+                <button type="button" id="boton-tema" class="btn btn-secundario" onclick="alternarTema()">Modo oscuro</button>
                 {% if session.usuario %}
-                    <p>Hola, {{ session.usuario }}</p>
+                    <span class="topbar-usuario">Hola, {{ session.usuario }}</span>
                     <a href="/logout">Cerrar sesion</a>
                 {% else %}
                     <a href="/login">Iniciar sesion</a>
                 {% endif %}
-            </div>
-        </aside>
-        <main class="contenido">
-            {% with mensajes = get_flashed_messages(with_categories=true) %}
-                {% if mensajes %}
-                    <div class="flash-contenedor">
-                        {% for categoria, mensaje in mensajes %}
-                            <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-            {% block content %}{% endblock %}
-        </main>
+            </header>
+            <main class="contenido">
+                {% with mensajes = get_flashed_messages(with_categories=true) %}
+                    {% if mensajes %}
+                        <div class="flash-contenedor">
+                            {% for categoria, mensaje in mensajes %}
+                                <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                {% block content %}{% endblock %}
+                        </main>
+        </div>
     </div>
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </body>
 </html>

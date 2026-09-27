@@ -2,7 +2,9 @@
 
 {% block content %}
     <h1>Proyectos</h1>
-    <a href="/proyectos/nuevo">Agregar proyecto</a><br><br>
+    <a href="/proyectos/nuevo" class="btn btn-primario">Agregar proyecto</a><br><br>
+
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
 
     <table>
         <thead>
@@ -19,12 +21,12 @@
                 <tr>
                     <td><a href="/proyectos/{{ proyecto[0] }}">{{ proyecto[1] }}</a></td>
                     <td>{{ nombre_cliente }}</td>
-                    <td>{{ proyecto[3] }}</td>
+                    <td><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></td>
                     <td>{{ proyecto[4] }}</td>
                     <td>
-                        <a href="/proyectos/{{ proyecto[0] }}/editar">Editar</a>
+                        <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline">
-                            <input type="submit" value="Eliminar">
+                            <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token()}}">
                         </form>
                     </td>

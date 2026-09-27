@@ -196,8 +196,9 @@ def nuevo_cliente():
         notas = request.form["notas"]
         
         if nombre == "" or email == "":
-            return "<p>Error: nombre y email son obligatorios.</p><a href='/clientes/nuevo'>Volver al formulario</a>"
-        
+            flash("Nombre y email son obligatorios.", "error")
+            return redirect(url_for("nuevo_cliente"))
+
         agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"])
         
         flash("Cliente agregado correctamente", "exito")
@@ -262,8 +263,9 @@ def editar_cliente_ruta(id):
         notas = request.form["notas"]
         
         if nombre == "" or email == "":
-            return f"<p>Error: nombre y email son obligatorios.</p><a href='/clientes/{id}/editar'>Volver</a>"
-        
+            flash("Nombre y email son obligatorios.", "error")
+            return redirect(url_for("editar_cliente_ruta", id=id))
+
         editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"])
         
         flash("Cliente actualizado correctamente.", "exito")
@@ -340,8 +342,9 @@ def nuevo_proyecto():
         fecha_entrega = request.form["fecha_entrega"]
         
         if titulo == "" or cliente_id == "":
-            return "<p>Error: titulo y cliente son obligatorios.</p><a href='/proyectos/nuevo'>Volver</a>"
-        
+            flash("Título y cliente son obligatorios.", "error")
+            return redirect(url_for("nuevo_proyecto"))
+
         agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
         
         flash("Proyecto agregado correctamente.", "exito")
@@ -407,7 +410,8 @@ def editar_proyecto_ruta(id):
         fecha_entrega = request.form["fecha_entrega"]
 
         if titulo == "" or cliente_id == "":
-            return f"<p>Error: titulo y cliente son obligatorios.</p><a href='/proyectos/{id}/editar'>Volver</a>"
+            flash("Título y cliente son obligatorios.", "error")
+            return redirect(url_for("editar_proyecto_ruta", id=id))
 
         editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
 
@@ -463,12 +467,14 @@ def nuevo_pago():
         fecha = request.form["fecha"]
 
         if proyecto_id == "" or monto == "":
-            return "<p>Error: proyecto y monto son obligatorios.</p><a href='/pagos/nuevo'>Volver</a>"
+            flash("Proyecto y monto son obligatorios.", "error")
+            return redirect(url_for("nuevo_pago"))
 
         try:
             monto = float(monto)
         except ValueError:
-            return "<p>Error: el monto debe ser un número válido.</p><a href='/pagos/nuevo'>Volver</a>"
+            flash("El monto debe ser un número válido.", "error")
+            return redirect(url_for("nuevo_pago"))
 
         agregar_pago(proyecto_id, monto, fecha, session["agencia_id"])
 
@@ -510,12 +516,14 @@ def editar_pago_ruta(id):
         fecha = request.form["fecha"]
 
         if proyecto_id == "" or monto == "":
-            return f"<p>Error: proyecto y monto son obligatorios.</p><a href='/pagos/{id}/editar'>Volver</a>"
+            flash("Proyecto y monto son obligatorios.", "error")
+            return redirect(url_for("editar_pago_ruta", id=id))
 
         try:
             monto = float(monto)
         except ValueError:
-            return f"<p>Error: el monto debe ser un número válido.</p><a href='/pagos/{id}/editar'>Volver</a>"
+            flash("El monto debe ser un número válido.", "error")
+            return redirect(url_for("editar_pago_ruta", id=id))
 
         editar_pago_por_id(id, proyecto_id, monto, fecha, session["agencia_id"])
         flash("Pago actualizado correctamente.", "exito")
@@ -556,8 +564,9 @@ def nueva_nota():
         fecha = request.form["fecha"]
         
         if cliente_id == "" or contenido == "":
-            return "<p>Error: cliente y contenido son obligatorios.</p><a href='/notas/nuevo'>Volver</a>"
-        
+            flash("Cliente y contenido son obligatorios.", "error")
+            return redirect(url_for("nueva_nota"))
+
         agregar_nota(cliente_id, contenido, fecha, session["agencia_id"])
         
         flash("Nota agregada correctamente.", "exito")
@@ -608,8 +617,9 @@ def editar_nota_ruta(id):
         fecha = request.form["fecha"]
         
         if cliente_id == "" or contenido == "":
-            return f"<p>Error: cliente y contenido son obligatorios.</p><a href='/notas/{id}/editar'>Volver</a>"
-        
+            flash("Cliente y contenido son obligatorios.", "error")
+            return redirect(url_for("editar_nota_ruta", id=id))
+
         editar_nota_por_id(id, cliente_id, contenido, fecha, session["agencia_id"])
         
         flash("Nota actualizada correctamente.", "exito")

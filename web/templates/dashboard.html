@@ -25,8 +25,9 @@
     <div class="paneles-secundarios">
         <div class="tarjeta">
             <h2>Proyectos por estado</h2>
+            {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
             {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
-                <p>{{ estado }}: {{ cantidad }} ({{ porcentaje }}%)</p>
+                <p><span class="badge {{ clases_estado.get(estado, 'badge-pendiente') }}">{{ estado }}</span> {{ cantidad }} ({{ porcentaje }}%)</p>
                 <div class="barra-progreso">
                     <div class="barra-progreso-relleno" style="width: {{ porcentaje }}%;"></div>
                 </div>

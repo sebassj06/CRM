@@ -2,8 +2,8 @@
 
 {% block content %}
    <h1>Clientes</h1>
-   <a href="/clientes/nuevo">Agregar clientes</a>
-   <a href="/clientes/importar">Importar CSV</a><br><br>
+    <a href="/clientes/nuevo" class="btn btn-primario">Agregar clientes</a>
+    <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a><br><br>
 
    <table>
        <thead>
@@ -19,10 +19,10 @@
                    <td><a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a></td>
                    <td>{{ cliente[2] }}</td>
                    <td>
-                       <a href="/clientes/{{ cliente[0] }}/editar">Editar</a>
-                       <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline">
-                           <input type="submit" value="Eliminar">
-                           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">Editar</a>
+                        <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline">
+                        <button type="submit" class="btn btn-peligro">Eliminar</button>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                        </form>
                    </td>
                </tr>

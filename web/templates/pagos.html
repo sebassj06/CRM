@@ -2,7 +2,7 @@
 
 {% block content %}
     <h1>Pagos</h1>
-    <a href="/pagos/nuevo">Agregar pago</a><br><br>
+    <a href="/pagos/nuevo" class="btn btn-primario">Agregar pago</a><br><br>
 
     <table>
         <thead>
@@ -20,9 +20,9 @@
                     <td>${{ pago[2] }}</td>
                     <td>{{ pago[3] }}</td>
                     <td>
-                        <a href="/pagos/{{ pago[0] }}/editar">Editar</a>
+                        <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline">
-                            <input type="submit" value="Eliminar">
+                            <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         </form>
                     </td>

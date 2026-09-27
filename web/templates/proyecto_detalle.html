@@ -3,6 +3,8 @@
 {% block content %}
     <h1>Proyecto</h1>
 
+        {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+
     <div class="tarjeta">
         <dl>
             <dt>Título</dt>
@@ -10,7 +12,7 @@
             <dt>Cliente</dt>
             <dd>{{ nombre_cliente }}</dd>
             <dt>Estado</dt>
-            <dd>{{ proyecto[3] }}</dd>
+            <dd><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></dd>
             <dt>Entrega</dt>
             <dd>{{ proyecto[4] }}</dd>
         </dl>

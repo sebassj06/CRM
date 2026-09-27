@@ -2,7 +2,7 @@
 
 {% block content %}
     <h1>Notas</h1>
-    <a href="/notas/nuevo">Agregar nota</a><br><br>
+    <a href="/notas/nuevo" class="btn btn-primario">Agregar nota</a><br><br>
 
     <table>
         <thead>
@@ -17,12 +17,12 @@
             {% for nota, nombre_cliente in notas %}
                 <tr>
                     <td><a href="/notas/{{ nota[0] }}">{{ nombre_cliente }}</a></td>
-                    <td>{{ nota[2] }}</td>
+                    <td><span class="texto-truncado" title="{{ nota[2] }}">{{ nota[2] }}</span></td>
                     <td>{{ nota[3] }}</td>
                     <td>
-                        <a href="/notas/{{ nota[0] }}/editar">Editar</a>
+                        <a href="/notas/{{ nota[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline">
-                            <input type="submit" value="Eliminar">
+                            <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         </form>
                     </td>
