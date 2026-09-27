@@ -1,16 +1,24 @@
 {% extends "base_publico.html" %}
 
+{% block title %}Iniciar sesión · CRM Agencia{% endblock %}
+
 {% block content %}
-    <h1>Iniciar sesión</h1>
+    <h2>Iniciar sesión</h2>
 
     {% if error %}
-        <p style="color:red;">{{ error }}</p>
+        <div class="flash flash-error">{{ error }}</div>
     {% endif %}
 
     <form method="POST" class="formulario">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        Usuario: <input type="text" name="nombre_usuario"><br>
-        Contraseña: <input type="password" name="contraseña"><br>
+        <div class="campo">
+            <label for="nombre_usuario">Usuario</label>
+            <input type="text" id="nombre_usuario" name="nombre_usuario">
+        </div>
+        <div class="campo">
+            <label for="contraseña">Contraseña</label>
+            <input type="password" id="contraseña" name="contraseña">
+        </div>
         <input type="submit" value="Entrar">
     </form>
 {% endblock %}

@@ -66,6 +66,18 @@ def _parsear_fecha(fecha_texto):
             continue
     return None
 
+def proyecto_esta_por_vencer(estado, fecha_entrega, dias=3):
+    if estado == "Completado":
+        return False
+
+    fecha = _parsear_fecha(fecha_entrega)
+    if fecha is None:
+        return False
+
+    hoy = datetime.now().date()
+    limite = hoy + timedelta(days=dias)
+    return hoy <= fecha <= limite
+
 def proyectos_por_vencer(agencia_id, dias=3):
     conexion = obtener_conexion()
     cursor = conexion.cursor()

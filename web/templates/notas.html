@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 
+{% block title %}Notas · CRM Agencia{% endblock %}
+
 {% block content %}
     <h1>Notas</h1>
     <a href="/notas/nuevo" class="btn btn-primario">Agregar nota</a><br><br>
 
+    {% if notas %}
     <table>
         <thead>
             <tr>
@@ -21,7 +24,7 @@
                     <td>{{ nota[3] }}</td>
                     <td>
                         <a href="/notas/{{ nota[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline">
+                        <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         </form>
@@ -30,4 +33,11 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>Aún no tenés notas</h2>
+        <p>Agregá tu primera nota para llevar un historial de seguimiento con tus clientes.</p>
+        <a href="/notas/nuevo" class="btn btn-primario">Agregar nota</a>
+    </div>
+    {% endif %}
 {% endblock %}

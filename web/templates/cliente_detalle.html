@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{{ cliente[1] }} · CRM Agencia{% endblock %}
+
 {% block content %}
     <h1>Cliente</h1>
 
@@ -30,7 +32,7 @@
         {% endif %}
 
         <form method="POST" action="/clientes/{{ cliente[0] }}/resumen-ia">
-            <input type="submit" value="Generar resumen con IA">
+            <input type="submit" value="Generar resumen con IA" data-cargando="Generando resumen...">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
 
@@ -51,7 +53,7 @@
                 <label for="palabras_clave">Palabras clave</label>
                 <input type="text" id="palabras_clave" name="palabras_clave">
             </div>
-            <input type="submit" value="Generar borrador de correo con IA">
+            <input type="submit" value="Generar borrador de correo con IA" data-cargando="Generando borrador...">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
 
@@ -65,7 +67,7 @@
                     <label for="cuerpo">Cuerpo</label>
                     <textarea id="cuerpo" name="cuerpo" rows="6" cols="50">{{ cuerpo_borrador }}</textarea>
                 </div>
-                <input type="submit" value="Enviar correo">
+                <input type="submit" value="Enviar correo" data-cargando="Enviando...">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             </form>
         {% endif %}

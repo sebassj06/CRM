@@ -19,6 +19,10 @@ def enviar_mensaje(chat_id, texto):
         return False
     return True
 
+def avisar_proyecto_individual(titulo, fecha_entrega, nombre_cliente, chat_id):
+    mensaje = f"Proyecto por vencer: {titulo} ({nombre_cliente}) - entrega: {fecha_entrega}"
+    return enviar_mensaje(chat_id, mensaje)
+
 def avisar_proyectos_por_vencer():
     agencias = obtener_agencias()
 

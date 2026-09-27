@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 
+{% block title %}Pagos · CRM Agencia{% endblock %}
+
 {% block content %}
     <h1>Pagos</h1>
     <a href="/pagos/nuevo" class="btn btn-primario">Agregar pago</a><br><br>
 
+    {% if pagos %}
     <table>
         <thead>
             <tr>
@@ -21,7 +24,7 @@
                     <td>{{ pago[3] }}</td>
                     <td>
                         <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline">
+                        <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         </form>
@@ -30,4 +33,11 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>Aún no tenés pagos registrados</h2>
+        <p>Registrá un pago para empezar a llevar el control de lo cobrado por proyecto.</p>
+        <a href="/pagos/nuevo" class="btn btn-primario">Agregar pago</a>
+    </div>
+    {% endif %}
 {% endblock %}

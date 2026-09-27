@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{% if nota %}Editar nota{% else %}Nueva nota{% endif %} · CRM Agencia{% endblock %}
+
 {% block content %}
     {% if nota %}
         <h1>Editar nota</h1>
@@ -20,7 +22,7 @@
                 <label for="palabras_clave">Palabras clave</label>
                 <input type="text" id="palabras_clave" name="palabras_clave">
             </div>
-            <input type="submit" value="Generar borrador con IA">
+            <input type="submit" value="Generar borrador con IA" data-cargando="Generando borrador...">
         </form>
         <hr>
     {% endif %}

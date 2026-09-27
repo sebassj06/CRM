@@ -1,10 +1,13 @@
 {% extends "base.html"%}
 
+{% block title %}Clientes · CRM Agencia{% endblock %}
+
 {% block content %}
    <h1>Clientes</h1>
     <a href="/clientes/nuevo" class="btn btn-primario">Agregar clientes</a>
     <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a><br><br>
 
+   {% if clientes %}
    <table>
        <thead>
            <tr>
@@ -20,7 +23,7 @@
                    <td>{{ cliente[2] }}</td>
                    <td>
                         <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline">
+                        <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')">
                         <button type="submit" class="btn btn-peligro">Eliminar</button>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                        </form>
@@ -29,4 +32,11 @@
            {% endfor %}
        </tbody>
    </table>
+   {% else %}
+   <div class="tarjeta estado-vacio">
+       <h2>Aún no tenés clientes</h2>
+       <p>Agregá tu primer cliente o importalos desde un archivo CSV/Excel para empezar a organizar tu agencia.</p>
+       <a href="/clientes/nuevo" class="btn btn-primario">Agregar cliente</a>
+   </div>
+   {% endif %}
 {% endblock %}

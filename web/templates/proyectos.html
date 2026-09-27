@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 
+{% block title %}Proyectos · CRM Agencia{% endblock %}
+
 {% block content %}
     <h1>Proyectos</h1>
     <a href="/proyectos/nuevo" class="btn btn-primario">Agregar proyecto</a><br><br>
 
     {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
 
+    {% if proyectos %}
     <table>
         <thead>
             <tr>
@@ -25,7 +28,7 @@
                     <td>{{ proyecto[4] }}</td>
                     <td>
                         <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline">
+                        <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token()}}">
                         </form>
@@ -34,4 +37,11 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>Aún no tenés proyectos</h2>
+        <p>Creá tu primer proyecto para empezar a organizar las entregas de tus clientes.</p>
+        <a href="/proyectos/nuevo" class="btn btn-primario">Agregar proyecto</a>
+    </div>
+    {% endif %}
 {% endblock %}

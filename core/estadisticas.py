@@ -1,52 +1,52 @@
 from core.database import obtener_conexion
 
-def contar_clientes():
+def contar_clientes(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT COUNT(*) FROM clientes")
+    cursor.execute("SELECT COUNT(*) FROM clientes WHERE agencia_id = %s", (agencia_id,))
     resultado = cursor.fetchone()
     conexion.close()
     return resultado[0]
 
-def contar_proyectos():
+def contar_proyectos(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT COUNT(*) FROM proyectos")
+    cursor.execute("SELECT COUNT(*) FROM proyectos WHERE agencia_id = %s", (agencia_id,))
     resultado = cursor.fetchone()
     conexion.close()
     return resultado[0]
 
-def contar_pagos():
+def contar_pagos(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT COUNT(*) FROM pagos")
+    cursor.execute("SELECT COUNT(*) FROM pagos WHERE agencia_id = %s", (agencia_id,))
     resultado = cursor.fetchone()
     conexion.close()
     return resultado[0]
 
-def total_cobrado():
+def total_cobrado(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT SUM(monto) FROM pagos")
+    cursor.execute("SELECT SUM(monto) FROM pagos WHERE agencia_id = %s", (agencia_id,))
     resultado = cursor.fetchone()
     conexion.close()
     return resultado[0] or 0
 
-def proyectos_por_estado():
+def proyectos_por_estado(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT estado, COUNT(*) FROM proyectos GROUP BY estado")
+    cursor.execute("SELECT estado, COUNT(*) FROM proyectos WHERE agencia_id = %s GROUP BY estado", (agencia_id,))
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
 
 
-def estadisticas_dashboard():
-    total_clientes = contar_clientes()
-    total_proyectos = contar_proyectos()
-    total_pagos = contar_pagos()
-    cobrado = total_cobrado()
-    por_estado = proyectos_por_estado()
+def estadisticas_dashboard(agencia_id):
+    total_clientes = contar_clientes(agencia_id)
+    total_proyectos = contar_proyectos(agencia_id)
+    total_pagos = contar_pagos(agencia_id)
+    cobrado = total_cobrado(agencia_id)
+    por_estado = proyectos_por_estado(agencia_id)
 
     estados_con_porcentaje = []
     completados = 0

@@ -7,7 +7,8 @@
             document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
-    <title>CRM Agencia</title>
+    <title>{% block title %}CRM Agencia{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,18 +19,19 @@
         <aside class="sidebar">
             <div class="sidebar-marca">CRM Agencia</div>
             <nav>
-                <a href="/">Inicio</a>
-                <a href="/clientes">Clientes</a>
-                <a href="/proyectos">Proyectos</a>
-                <a href="/pagos">Pagos</a>
-                <a href="/notas">Notas</a>
+                <a href="/" class="{{ 'activo' if request.path == '/' else '' }}">Inicio</a>
+                <a href="/clientes" class="{{ 'activo' if request.path.startswith('/clientes') else '' }}">Clientes</a>
+                <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">Proyectos</a>
+                <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">Pagos</a>
+                <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">Notas</a>
+                <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">Configuración</a>
             </nav>
         </aside>
         <div class="area-principal">
             <header class="topbar">
-                <button type="button" id="boton-tema" class="btn btn-secundario" onclick="alternarTema()">Modo oscuro</button>
+                <button type="button" id="boton-tema" class="btn btn-secundario">Modo oscuro</button>
                 {% if session.usuario %}
-                    <span class="topbar-usuario">Hola, {{ session.usuario }}</span>
+                    <span class="topbar-usuario">{% if agencia_actual %}{{ agencia_actual }} · {% endif %}Hola, {{ session.usuario }}</span>
                     <a href="/logout">Cerrar sesion</a>
                 {% else %}
                     <a href="/login">Iniciar sesion</a>

@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{% if cliente %}Editar cliente{% else %}Nuevo cliente{% endif %} · CRM Agencia{% endblock %}
+
 {% block content %}
     {% if cliente %}
         <h1>Editar cliente</h1>

@@ -16,7 +16,11 @@ def actualizar_configuracion_agencia(agencia_id, telegram_chat_id, gmail_user, g
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute(
-        "UPDATE agencias SET telegram_chat_id = %s, gmail_user = %s, gmail_app_password = %s WHERE id = %s",
+        """UPDATE agencias
+           SET telegram_chat_id = %s,
+               gmail_user = %s,
+               gmail_app_password = COALESCE(%s, gmail_app_password)
+           WHERE id = %s""",
         (telegram_chat_id, gmail_user, gmail_app_password, agencia_id)
     )
     conexion.commit()

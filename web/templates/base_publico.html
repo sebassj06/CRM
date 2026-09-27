@@ -7,7 +7,8 @@
             document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
-    <title>CRM Agencia</title>
+    <title>{% block title %}CRM Agencia{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,17 +16,26 @@
 </head>
 <body>
     <div class="layout-publico">
-        <div class="tarjeta-publica">
-            {% with mensajes = get_flashed_messages(with_categories=true) %}
-                {% if mensajes %}
-                    <div class="flash-contenedor">
-                        {% for categoria, mensaje in mensajes %}
-                            <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-            {% block content %}{% endblock %}
+        <div class="panel-marca">
+            <div class="marca-contenido">
+                <div class="marca-logo">C</div>
+                <h1 class="marca-titulo">CRM Agencia</h1>
+                <p class="marca-tagline">Gestioná clientes, proyectos, pagos y notas en un solo lugar.</p>
+            </div>
+        </div>
+        <div class="panel-formulario">
+            <div class="tarjeta-publica">
+                {% with mensajes = get_flashed_messages(with_categories=true) %}
+                    {% if mensajes %}
+                        <div class="flash-contenedor">
+                            {% for categoria, mensaje in mensajes %}
+                                <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                {% block content %}{% endblock %}
+            </div>
         </div>
     </div>
 </body>

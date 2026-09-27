@@ -21,4 +21,31 @@ function actualizarTextoBoton() {
     boton.textContent = esOscuro ? 'Modo claro' : 'Modo oscuro';
 }
 
-document.addEventListener('DOMContentLoaded', actualizarTextoBoton);
+function inicializarBotonTema() {
+    actualizarTextoBoton();
+
+    const boton = document.getElementById('boton-tema');
+    if (boton) {
+        boton.addEventListener('click', alternarTema);
+    }
+}
+
+function inicializarBotonesCarga() {
+    document.querySelectorAll('form').forEach(function (formulario) {
+        formulario.addEventListener('submit', function () {
+            const boton = formulario.querySelector('[data-cargando]');
+            if (!boton) {
+                return;
+            }
+            boton.disabled = true;
+            if (boton.tagName === 'INPUT') {
+                boton.value = boton.dataset.cargando;
+            } else {
+                boton.textContent = boton.dataset.cargando;
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', inicializarBotonTema);
+document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);

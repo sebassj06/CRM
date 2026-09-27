@@ -12,6 +12,7 @@ from datetime import date
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 from core.clientes import (obtener_clientes, 
                            obtener_cliente_por_id,
                            agregar_cliente, 
@@ -23,7 +24,8 @@ from core.proyectos import(
     obtener_proyecto_por_id,
     agregar_proyecto,
     editar_proyecto_por_id,
-    eliminar_proyecto_por_id
+    eliminar_proyecto_por_id,
+    proyecto_esta_por_vencer
 )
 from core.pagos import(
     obtener_pagos,
@@ -49,8 +51,9 @@ from core.estadisticas import (
     estadisticas_dashboard
 )
 from core.usuarios import verificar_usuario
-from core.agencias import obtener_agencia_por_id
+from core.agencias import obtener_agencia_por_id, actualizar_configuracion_agencia
 from core.importacion import importar_clientes_desde_archivo, generar_plantilla_clientes
+from avisos_telegram import avisar_proyecto_individual
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -65,17 +68,25 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return funcion_decorada
 
+@app.context_processor
+def inyectar_agencia_actual():
+    if "agencia_id" in session:
+        agencia = obtener_agencia_por_id(session["agencia_id"])
+        if agencia:
+            return {"agencia_actual": agencia[1]}
+    return {"agencia_actual": None}
+
 @app.route("/")
 @login_requerido
 def inicio():
-    datos = estadisticas_dashboard()
+    datos = estadisticas_dashboard(session["agencia_id"])
     return render_template("dashboard.html", **datos, resumen=None)
-    
-    
+
+
 @app.route("/resumen-ejecutivo", methods=["POST"])
 @login_requerido
 def resumen_ejecutivo():
-    datos = estadisticas_dashboard()
+    datos = estadisticas_dashboard(session["agencia_id"])
     resumen = generar_resumen_ejecutivo(
         datos["total_clientes"], datos["total_proyectos"],
         datos["total_pagos"], datos["cobrado"], datos["por_estado"]
@@ -101,6 +112,24 @@ def login():
     else:
         return render_template("login.html", error=None)
 
+@app.route("/configuracion", methods=["GET", "POST"])
+@login_requerido
+def configuracion_agencia():
+    agencia = obtener_agencia_por_id(session["agencia_id"])
+
+    if request.method == "POST":
+        telegram_chat_id = request.form["telegram_chat_id"].strip() or None
+        gmail_user = request.form["gmail_user"].strip() or None
+        gmail_app_password = request.form["gmail_app_password"].strip() or None
+
+        actualizar_configuracion_agencia(session["agencia_id"], telegram_chat_id, gmail_user, gmail_app_password)
+
+        flash("Configuración actualizada correctamente.", "exito")
+        return redirect(url_for("configuracion_agencia"))
+
+    return render_template("configuracion.html", agencia=agencia)
+
+
 @app.route("/logout")
 def logout():
     session.pop("usuario", None)
@@ -120,7 +149,8 @@ def ver_cliente(id):
     cliente = obtener_cliente_por_id(id, session["agencia_id"])
 
     if cliente is None:
-        return "Cliente no encontrado"
+        flash("Cliente no encontrado.", "error")
+        return redirect(url_for("ver_clientes"))
     else:
         notas = notas_de_cliente(id, session["agencia_id"])
         return render_template("cliente_detalle.html", cliente=cliente, notas=notas, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
@@ -132,7 +162,8 @@ def resumen_ia_cliente(id):
     cliente = obtener_cliente_por_id(id, session["agencia_id"])
 
     if cliente is None:
-        return "Cliente no encontrado"
+        flash("Cliente no encontrado.", "error")
+        return redirect(url_for("ver_clientes"))
 
     notas = notas_de_cliente(id, session["agencia_id"])
     resumen = resumir_notas_cliente(notas)
@@ -146,7 +177,8 @@ def generar_correo_ia(id):
     cliente = obtener_cliente_por_id(id, session["agencia_id"])
 
     if cliente is None:
-        return "Cliente no encontrado"
+        flash("Cliente no encontrado.", "error")
+        return redirect(url_for("ver_clientes"))
 
     asunto = request.form["asunto"]
     palabras_clave = request.form["palabras_clave"]
@@ -163,7 +195,8 @@ def enviar_correo_ia(id):
     cliente = obtener_cliente_por_id(id, session["agencia_id"])
 
     if cliente is None:
-        return "Cliente no encontrado"
+        flash("Cliente no encontrado.", "error")
+        return redirect(url_for("ver_clientes"))
 
     asunto = request.form["asunto"]
     cuerpo = request.form["cuerpo"]
@@ -251,10 +284,11 @@ def descargar_plantilla_clientes():
 @login_requerido
 def editar_cliente_ruta(id):
     cliente = obtener_cliente_por_id(id, session["agencia_id"])
-    
+
     if cliente is None:
-        return "Cliente no encontrado"
-    
+        flash("Cliente no encontrado.", "error")
+        return redirect(url_for("ver_clientes"))
+
     if request.method == "POST":
         nombre = request.form["nombre"]
         email = request.form["email"]
@@ -346,7 +380,17 @@ def nuevo_proyecto():
             return redirect(url_for("nuevo_proyecto"))
 
         agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
-        
+
+        if proyecto_esta_por_vencer(estado, fecha_entrega):
+            agencia = obtener_agencia_por_id(session["agencia_id"])
+            if agencia and agencia[2]:
+                try:
+                    cliente = obtener_cliente_por_id(cliente_id, session["agencia_id"])
+                    nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+                    avisar_proyecto_individual(titulo, fecha_entrega, nombre_cliente, agencia[2])
+                except Exception as error:
+                    print(f"No se pudo enviar el aviso de Telegram: {error}")
+
         flash("Proyecto agregado correctamente.", "exito")
         return redirect(url_for("ver_proyectos"))
         
@@ -359,9 +403,10 @@ def nuevo_proyecto():
 @login_requerido
 def ver_proyecto(id):
     proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
-    
+
     if proyecto is None:
-        return "Proyecto no encontrado"
+        flash("Proyecto no encontrado.", "error")
+        return redirect(url_for("ver_proyectos"))
     else:
         cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
         if cliente is None:
@@ -378,7 +423,8 @@ def sugerencias_ia_proyecto(id):
     proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
 
     if proyecto is None:
-        return "Proyecto no encontrado"
+        flash("Proyecto no encontrado.", "error")
+        return redirect(url_for("ver_proyectos"))
 
     cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
     if cliente is None:
@@ -399,10 +445,12 @@ def editar_proyecto_ruta(id):
     proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
 
     if proyecto is None:
-        return "Proyecto no encontrado"
+        flash("Proyecto no encontrado.", "error")
+        return redirect(url_for("ver_proyectos"))
 
     if request.method == "POST":
         estado_anterior = proyecto[3]
+        fecha_entrega_anterior = proyecto[4]
 
         titulo = request.form["titulo"]
         cliente_id = request.form["cliente_id"]
@@ -414,6 +462,16 @@ def editar_proyecto_ruta(id):
             return redirect(url_for("editar_proyecto_ruta", id=id))
 
         editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
+
+        if fecha_entrega != fecha_entrega_anterior and proyecto_esta_por_vencer(estado, fecha_entrega):
+            agencia = obtener_agencia_por_id(session["agencia_id"])
+            if agencia and agencia[2]:
+                try:
+                    cliente = obtener_cliente_por_id(cliente_id, session["agencia_id"])
+                    nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+                    avisar_proyecto_individual(titulo, fecha_entrega, nombre_cliente, agencia[2])
+                except Exception as error:
+                    print(f"No se pudo enviar el aviso de Telegram: {error}")
 
         if estado == "Completado" and estado_anterior != "Completado":
             cliente = obtener_cliente_por_id(cliente_id, session["agencia_id"])
@@ -490,9 +548,10 @@ def nuevo_pago():
 @login_requerido
 def ver_pago(id):
     pago = obtener_pago_por_id(id, session["agencia_id"])
-    
+
     if pago is None:
-        return "Pago no encontrado"
+        flash("Pago no encontrado.", "error")
+        return redirect(url_for("ver_pagos"))
     else:
         proyecto = obtener_proyecto_por_id(pago[1], session["agencia_id"])
         if proyecto is None:
@@ -508,7 +567,8 @@ def editar_pago_ruta(id):
     pago = obtener_pago_por_id(id, session["agencia_id"])
 
     if pago is None:
-        return "Pago no encontrado"
+        flash("Pago no encontrado.", "error")
+        return redirect(url_for("ver_pagos"))
 
     if request.method == "POST":
         proyecto_id = request.form["proyecto_id"]
@@ -592,9 +652,10 @@ def generar_nota_ia():
 @login_requerido
 def ver_nota(id):
     nota = obtener_nota_por_id(id, session["agencia_id"])
-    
+
     if nota is None:
-        return "Nota no encontrada"
+        flash("Nota no encontrada.", "error")
+        return redirect(url_for("ver_notas"))
     else:
         cliente = obtener_cliente_por_id(nota[1], session["agencia_id"])
         if cliente is None:
@@ -607,10 +668,11 @@ def ver_nota(id):
 @login_requerido
 def editar_nota_ruta(id):
     nota = obtener_nota_por_id(id, session["agencia_id"])
-    
+
     if nota is None:
-        return "Nota no encontrada"
-    
+        flash("Nota no encontrada.", "error")
+        return redirect(url_for("ver_notas"))
+
     if request.method == "POST":
         cliente_id = request.form["cliente_id"]
         contenido = request.form["contenido"]
@@ -636,9 +698,20 @@ def eliminar_nota_ruta(id):
     flash("Nota eliminada.", "exito")
     return redirect(url_for("ver_notas"))
 
-           
-        
-                
+
+@app.errorhandler(404)
+def pagina_no_encontrada(error):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(RateLimitExceeded)
+def limite_excedido(error):
+    return render_template(
+        "login.html",
+        error="Demasiados intentos de inicio de sesión. Esperá un minuto e intentá de nuevo."
+    ), 429
+
+
 if __name__ == "__main__":
     modo_debug = os.getenv("FLASK_DEBUG", "False") == "True"
     app.run(debug=modo_debug)

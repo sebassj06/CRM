@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración · CRM Agencia{% endblock %}
+
+{% block content %}
+    <div class="contenedor-angosto">
+        <h1>Configuración</h1>
+        <h2>Automatizaciones</h2>
+
+        <form method="POST" class="formulario">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="campo">
+                <label for="telegram_chat_id">Telegram — Chat ID</label>
+                <input type="text" id="telegram_chat_id" name="telegram_chat_id" value="{{ agencia[2] or '' }}">
+                <p class="ayuda-campo">Escribile a <strong>@userinfobot</strong> en Telegram y te va a responder con tu Chat ID.</p>
+            </div>
+            <div class="campo">
+                <label for="gmail_user">Gmail — Usuario</label>
+                <input type="text" id="gmail_user" name="gmail_user" value="{{ agencia[3] or '' }}">
+                <p class="ayuda-campo">La dirección de Gmail completa desde la que se van a enviar los correos.</p>
+            </div>
+            <div class="campo">
+                <label for="gmail_app_password">Gmail — Contraseña de aplicación</label>
+                <input type="password" id="gmail_app_password" name="gmail_app_password" placeholder="Dejá en blanco para no cambiarla">
+                <p class="ayuda-campo">Necesitás la verificación en dos pasos activada en tu cuenta de Google. Generala en <strong>myaccount.google.com/apppasswords</strong> — no es tu contraseña normal de Gmail.</p>
+            </div>
+            <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+        </form>
+    </div>
+{% endblock %}
