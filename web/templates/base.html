@@ -16,27 +16,51 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    {% from "_iconos.html" import icono %}
     <div class="layout">
         <div id="overlay-menu" class="overlay-menu"></div>
         <aside class="sidebar">
             <div class="sidebar-marca">CRM Agencia</div>
             <nav>
-                <a href="/" class="{{ 'activo' if request.path == '/' else '' }}">Inicio</a>
-                <a href="/clientes" class="{{ 'activo' if request.path.startswith('/clientes') else '' }}">Clientes</a>
-                <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">Proyectos</a>
-                <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">Pagos</a>
-                <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">Notas</a>
-                <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">Configuración</a>
+                <div class="sidebar-grupo-titulo">Principal</div>
+                <a href="/" class="{{ 'activo' if request.path == '/' else '' }}">{{ icono('inicio') }} Inicio</a>
+                <a href="/clientes" class="{{ 'activo' if request.path.startswith('/clientes') else '' }}">{{ icono('clientes') }} Clientes</a>
+                <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">{{ icono('proyectos') }} Proyectos</a>
+                <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">{{ icono('pagos') }} Pagos</a>
+                <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">{{ icono('notas') }} Notas</a>
+                <div class="sidebar-grupo-titulo">Sistema</div>
+                <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
             </nav>
         </aside>
         <div class="area-principal">
             <header class="topbar">
-                <button type="button" id="boton-menu" class="btn btn-secundario boton-menu" aria-label="Abrir menú">☰</button>
-                <button type="button" id="boton-tema" class="btn btn-secundario">Modo oscuro</button>
+                <button type="button" id="boton-menu" class="btn btn-secundario boton-menu" aria-label="Abrir menú">{{ icono('menu') }}</button>
                 {% if session.usuario %}
-                    <span class="topbar-usuario">{% if agencia_actual %}{{ agencia_actual }} · {% endif %}Hola, {{ session.usuario }}</span>
-                    <a href="/logout">Cerrar sesion</a>
+                    <div class="menu-usuario">
+                        <button type="button" id="boton-usuario" class="boton-usuario" aria-haspopup="true" aria-expanded="false">
+                            <span class="avatar-usuario">{{ session.usuario[:2]|upper }}</span>
+                            <span class="boton-usuario-texto">
+                                <span class="boton-usuario-nombre">{{ session.usuario }}</span>
+                                {% if agencia_actual %}<span class="boton-usuario-agencia">{{ agencia_actual }}</span>{% endif %}
+                            </span>
+                            {{ icono('flecha-abajo', clase='icono-flecha') }}
+                        </button>
+                        <div id="dropdown-usuario" class="dropdown-usuario">
+                            <div class="dropdown-usuario-encabezado">
+                                <span class="avatar-usuario avatar-usuario-grande">{{ session.usuario[:2]|upper }}</span>
+                                <div>
+                                    <div class="dropdown-usuario-nombre">{{ session.usuario }}</div>
+                                    {% if agencia_actual %}<div class="dropdown-usuario-agencia">{{ agencia_actual }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <a href="/configuracion" class="dropdown-usuario-item">{{ icono('configuracion') }} Configuración</a>
+                            <button type="button" id="boton-tema" class="dropdown-usuario-item dropdown-usuario-boton">{{ icono('apariencia') }} <span id="texto-tema">Modo oscuro</span></button>
+                            <div class="dropdown-usuario-separador"></div>
+                            <a href="/logout" class="dropdown-usuario-item">{{ icono('cerrar-sesion') }} Cerrar sesión</a>
+                        </div>
+                    </div>
                 {% else %}
+                    <button type="button" id="boton-tema" class="btn btn-secundario">Modo oscuro</button>
                     <a href="/login">Iniciar sesion</a>
                 {% endif %}
             </header>

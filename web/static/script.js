@@ -18,7 +18,16 @@ function actualizarTextoBoton() {
         return;
     }
     const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-    boton.textContent = esOscuro ? 'Modo claro' : 'Modo oscuro';
+    const texto = esOscuro ? 'Modo claro' : 'Modo oscuro';
+
+    // Si el botón tiene un ícono adentro (dropdown de usuario), solo actualizamos
+    // el texto del span interno para no borrar el SVG con textContent.
+    const spanTexto = document.getElementById('texto-tema');
+    if (spanTexto) {
+        spanTexto.textContent = texto;
+    } else {
+        boton.textContent = texto;
+    }
 }
 
 function inicializarBotonTema() {
@@ -69,6 +78,39 @@ function inicializarMenuMobile() {
     overlay.addEventListener('click', cerrarMenu);
 }
 
+function inicializarMenuUsuario() {
+    const contenedor = document.querySelector('.menu-usuario');
+    const boton = document.getElementById('boton-usuario');
+
+    if (!contenedor || !boton) {
+        return;
+    }
+
+    function cerrarMenu() {
+        contenedor.classList.remove('abierto');
+        boton.setAttribute('aria-expanded', 'false');
+    }
+
+    boton.addEventListener('click', function (evento) {
+        evento.stopPropagation();
+        const abierto = contenedor.classList.toggle('abierto');
+        boton.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (evento) {
+        if (!contenedor.contains(evento.target)) {
+            cerrarMenu();
+        }
+    });
+
+    document.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Escape') {
+            cerrarMenu();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
 document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
 document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
+document.addEventListener('DOMContentLoaded', inicializarMenuUsuario);

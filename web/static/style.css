@@ -94,7 +94,23 @@ body {
     gap: var(--space-1);
 }
 
+.sidebar-grupo-titulo {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--space-4) var(--space-5) var(--space-1) var(--space-5);
+}
+
+.sidebar-grupo-titulo:first-child {
+    padding-top: 0;
+}
+
 .sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: white;
     text-decoration: none;
     font-weight: 600;
@@ -229,9 +245,140 @@ body {
     border-bottom: 1px solid var(--color-border);
 }
 
-.topbar-usuario {
-    color: var(--color-text-muted);
+.icono {
+    flex-shrink: 0;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.menu-usuario {
+    position: relative;
+}
+
+.boton-usuario {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    color: var(--color-text);
+}
+
+.boton-usuario:hover {
+    background-color: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+.avatar-usuario {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.avatar-usuario-grande {
+    width: 40px;
+    height: 40px;
+    font-size: 0.95rem;
+}
+
+.boton-usuario-texto {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+}
+
+.boton-usuario-nombre {
     font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.boton-usuario-agencia {
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+}
+
+.icono-flecha {
+    color: var(--color-text-muted);
+    transition: transform 0.15s ease;
+}
+
+.menu-usuario.abierto .icono-flecha {
+    transform: rotate(180deg);
+}
+
+.dropdown-usuario {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 230px;
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    padding: var(--space-2) 0;
+    z-index: 60;
+}
+
+.menu-usuario.abierto .dropdown-usuario {
+    display: block;
+}
+
+.dropdown-usuario-encabezado {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4) var(--space-3) var(--space-4);
+    margin-bottom: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.dropdown-usuario-nombre {
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.dropdown-usuario-agencia {
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+}
+
+.dropdown-usuario-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    color: var(--color-text);
+    text-decoration: none;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-usuario-item:hover {
+    background-color: var(--color-bg);
+}
+
+.dropdown-usuario-separador {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: var(--space-1) 0;
 }
 
 .btn.boton-menu {
@@ -597,22 +744,33 @@ tbody td:first-child a:hover {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    overflow: hidden;
+    padding: var(--space-4) var(--space-5);
 }
 
 .metrica-encabezado {
-    background-color: var(--color-primary);
-    color: white;
-    padding: 10px var(--space-4);
-    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+}
+
+.metrica-etiqueta {
+    font-size: var(--font-size-small);
     font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.metrica-icono {
+    color: var(--color-accent);
 }
 
 .metrica-numero {
-    padding: var(--space-4);
     font-size: 2rem;
     font-weight: 700;
     color: var(--color-heading);
+    line-height: 1.1;
 }
 
 .paneles-secundarios {
@@ -666,6 +824,48 @@ tbody td:first-child a:hover {
     color: var(--color-heading);
 }
 
+.anillo-contexto {
+    text-align: center;
+    margin: var(--space-3) 0 0 0;
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+}
+
+.texto-vacio {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.tarjeta-ia-encabezado {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.tarjeta-ia-icono {
+    color: var(--color-accent);
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.tarjeta-ia-descripcion {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    margin: 4px 0 0 0;
+}
+
+.tarjeta-ia-resultado {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.tarjeta-ia-resultado p {
+    margin: 0;
+    line-height: 1.6;
+}
+
 
 @media (max-width: 768px) {
     body {
@@ -675,6 +875,14 @@ tbody td:first-child a:hover {
     .btn.boton-menu {
         display: inline-block;
         margin-right: auto;
+    }
+
+    .boton-usuario-texto {
+        display: none;
+    }
+
+    .dropdown-usuario {
+        min-width: 200px;
     }
 
     .sidebar {

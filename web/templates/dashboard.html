@@ -1,26 +1,51 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Panel · CRM Agencia{% endblock %}
 
 {% block content %}
     <h1>Panel de estadísticas</h1>
 
+    {% set _cobrado_texto = "{:,.2f}".format(cobrado) %}
+    {% if _cobrado_texto.endswith('.00') %}
+        {% set _cobrado_texto = _cobrado_texto[:-3] %}
+    {% endif %}
+
+    {% set _completados = 0 %}
+    {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
+        {% if estado == 'Completado' %}
+            {% set _completados = cantidad %}
+        {% endif %}
+    {% endfor %}
+
     <div class="metricas">
         <div class="metrica">
-            <div class="metrica-encabezado">Clientes</div>
+            <div class="metrica-encabezado">
+                <span class="metrica-etiqueta">Clientes</span>
+                {{ icono('clientes', clase='metrica-icono') }}
+            </div>
             <div class="metrica-numero">{{ total_clientes }}</div>
         </div>
         <div class="metrica">
-            <div class="metrica-encabezado">Proyectos</div>
+            <div class="metrica-encabezado">
+                <span class="metrica-etiqueta">Proyectos</span>
+                {{ icono('proyectos', clase='metrica-icono') }}
+            </div>
             <div class="metrica-numero">{{ total_proyectos }}</div>
         </div>
         <div class="metrica">
-            <div class="metrica-encabezado">Pagos registrados</div>
+            <div class="metrica-encabezado">
+                <span class="metrica-etiqueta">Pagos registrados</span>
+                {{ icono('lista', clase='metrica-icono') }}
+            </div>
             <div class="metrica-numero">{{ total_pagos }}</div>
         </div>
         <div class="metrica">
-            <div class="metrica-encabezado">Total cobrado</div>
-            <div class="metrica-numero">${{ cobrado }}</div>
+            <div class="metrica-encabezado">
+                <span class="metrica-etiqueta">Total cobrado</span>
+                {{ icono('pagos', clase='metrica-icono') }}
+            </div>
+            <div class="metrica-numero">${{ _cobrado_texto }}</div>
         </div>
     </div>
 
@@ -28,12 +53,16 @@
         <div class="tarjeta">
             <h2>Proyectos por estado</h2>
             {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
-            {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
-                <p><span class="badge {{ clases_estado.get(estado, 'badge-pendiente') }}">{{ estado }}</span> {{ cantidad }} ({{ porcentaje }}%)</p>
-                <div class="barra-progreso">
-                    <div class="barra-progreso-relleno" style="width: {{ porcentaje }}%;"></div>
-                </div>
-            {% endfor %}
+            {% if estados_con_porcentaje %}
+                {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
+                    <p><span class="badge {{ clases_estado.get(estado, 'badge-pendiente') }}">{{ estado }}</span> {{ cantidad }} ({{ porcentaje }}%)</p>
+                    <div class="barra-progreso">
+                        <div class="barra-progreso-relleno" style="width: {{ porcentaje }}%;"></div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="texto-vacio">Todavía no hay proyectos para mostrar su distribución por estado.</p>
+            {% endif %}
         </div>
 
         <div class="tarjeta">
@@ -41,18 +70,27 @@
             <div class="anillo-porcentaje" style="--porcentaje: {{ porcentaje_completado }}%;">
                 <div class="anillo-hueco">{{ porcentaje_completado }}%</div>
             </div>
+            <p class="anillo-contexto">{{ _completados }} de {{ total_proyectos }} proyectos completados</p>
         </div>
     </div>
 
-    <div class="tarjeta">
+    <div class="tarjeta tarjeta-ia">
+        <div class="tarjeta-ia-encabezado">
+            {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+            <div>
+                <h2>Resumen ejecutivo</h2>
+                <p class="tarjeta-ia-descripcion">Generá una visión general del rendimiento de tu agencia con IA.</p>
+            </div>
+        </div>
         <form method="POST" action="/resumen-ejecutivo">
-            <input type="submit" value="Generar resumen ejecutivo" data-cargando="Generando resumen...">
+            <input type="submit" value="Generar resumen" data-cargando="Generando resumen...">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
 
         {% if resumen %}
-            <h2>Resumen ejecutivo</h2>
-            <p>{{ resumen }}</p>
+            <div class="tarjeta-ia-resultado">
+                <p>{{ resumen }}</p>
+            </div>
         {% endif %}
     </div>
 {% endblock %}
