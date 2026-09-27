@@ -234,7 +234,7 @@ body {
     font-size: 0.9rem;
 }
 
-.boton-menu {
+.btn.boton-menu {
     display: none;
     font-size: 1.1rem;
     line-height: 1;
@@ -661,7 +661,7 @@ tbody tr:hover {
         zoom: 1;
     }
 
-    .boton-menu {
+    .btn.boton-menu {
         display: inline-block;
         margin-right: auto;
     }
