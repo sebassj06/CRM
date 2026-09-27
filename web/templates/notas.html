@@ -19,10 +19,10 @@
         <tbody>
             {% for nota, nombre_cliente in notas %}
                 <tr>
-                    <td><a href="/notas/{{ nota[0] }}">{{ nombre_cliente }}</a></td>
-                    <td><span class="texto-truncado" title="{{ nota[2] }}">{{ nota[2] }}</span></td>
-                    <td>{{ nota[3] }}</td>
-                    <td>
+                    <td data-label="Cliente"><a href="/notas/{{ nota[0] }}">{{ nombre_cliente }}</a></td>
+                    <td data-label="Nota"><span class="texto-truncado" title="{{ nota[2] }}">{{ nota[2] }}</span></td>
+                    <td data-label="Fecha">{{ nota[3] }}</td>
+                    <td data-label="Acciones">
                         <a href="/notas/{{ nota[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>

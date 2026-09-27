@@ -22,11 +22,11 @@
         <tbody>
             {% for proyecto, nombre_cliente in proyectos %}
                 <tr>
-                    <td><a href="/proyectos/{{ proyecto[0] }}">{{ proyecto[1] }}</a></td>
-                    <td>{{ nombre_cliente }}</td>
-                    <td><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></td>
-                    <td>{{ proyecto[4] }}</td>
-                    <td>
+                    <td data-label="Título"><a href="/proyectos/{{ proyecto[0] }}">{{ proyecto[1] }}</a></td>
+                    <td data-label="Cliente">{{ nombre_cliente }}</td>
+                    <td data-label="Estado"><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></td>
+                    <td data-label="Entrega">{{ proyecto[4] }}</td>
+                    <td data-label="Acciones">
                         <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>

@@ -694,6 +694,39 @@ tbody tr:hover {
         z-index: 99;
     }
 
+    thead {
+        display: none;
+    }
+
+    table, tbody, tr, td {
+        display: block;
+        width: 100%;
+    }
+
+    tbody tr {
+        margin-bottom: var(--space-4);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+    }
+
+    td {
+        border-bottom: none;
+        padding: var(--space-2) 15px;
+    }
+
+    td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: var(--font-size-small);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        margin-bottom: 2px;
+    }
+
+    .texto-truncado {
+        max-width: 100%;
+    }
+
     .layout-publico {
         flex-direction: column;
     }

@@ -19,10 +19,10 @@
         <tbody>
             {% for pago, titulo_proyecto in pagos %}
                 <tr>
-                    <td><a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a></td>
-                    <td>${{ pago[2] }}</td>
-                    <td>{{ pago[3] }}</td>
-                    <td>
+                    <td data-label="Proyecto"><a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a></td>
+                    <td data-label="Monto">${{ pago[2] }}</td>
+                    <td data-label="Fecha">{{ pago[3] }}</td>
+                    <td data-label="Acciones">
                         <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')">
                             <button type="submit" class="btn btn-peligro">Eliminar</button>

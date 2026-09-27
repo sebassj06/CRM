@@ -19,9 +19,9 @@
        <tbody>
            {% for cliente in clientes %}
                <tr>
-                   <td><a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a></td>
-                   <td>{{ cliente[2] }}</td>
-                   <td>
+                   <td data-label="Nombre"><a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a></td>
+                   <td data-label="Email">{{ cliente[2] }}</td>
+                   <td data-label="Acciones">
                         <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">Editar</a>
                         <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')">
                         <button type="submit" class="btn btn-peligro">Eliminar</button>
