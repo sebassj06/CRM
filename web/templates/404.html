@@ -1,11 +1,13 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Página no encontrada · CRM Agencia{% endblock %}
 
 {% block content %}
-    <div class="tarjeta">
+    <div class="tarjeta estado-vacio">
+        {{ icono('buscar', clase='icono-404', tamano=40) }}
         <h1>Página no encontrada</h1>
         <p>La página que buscás no existe o fue movida.</p>
-        <a href="/" class="btn btn-primario">Volver al inicio</a>
+        <a href="/" class="btn btn-primario">{{ icono('inicio', tamano=16) }} Volver al inicio</a>
     </div>
 {% endblock %}
