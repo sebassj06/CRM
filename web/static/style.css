@@ -673,6 +673,86 @@ tbody td:first-child a:hover {
     margin-bottom: var(--space-5);
 }
 
+.enlace-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: var(--space-3);
+}
+
+.enlace-volver:hover {
+    color: var(--color-accent);
+}
+
+.lista-notas {
+    list-style: none;
+    margin: 0 0 var(--space-4) 0;
+    padding: 0;
+}
+
+.nota-item {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.nota-item:last-child {
+    border-bottom: none;
+}
+
+.nota-fecha {
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.nota-contenido {
+    margin: var(--space-1) 0 0 0;
+}
+
+.lista-proyectos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.proyecto-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.proyecto-item:last-child {
+    border-bottom: none;
+}
+
+.proyecto-titulo {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-heading);
+    text-decoration: none;
+}
+
+.proyecto-titulo:hover {
+    text-decoration: underline;
+}
+
+.mensaje-estado {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: var(--space-3) 0 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
 .acciones {
     margin-bottom: var(--space-5);
 }

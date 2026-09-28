@@ -1,34 +1,68 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}{{ cliente[1] }} · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Cliente</h1>
+    <a href="/clientes" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a clientes</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>{{ cliente[1] }}</h1>
+            {% if cliente[4] %}<p class="encabezado-descripcion">{{ cliente[4] }}</p>{% endif %}
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar cliente</a>
+        </div>
+    </div>
 
     <div class="tarjeta">
+        <h2>Información de contacto</h2>
         <dl>
-            <dt>Nombre</dt>
-            <dd>{{ cliente[1] }}</dd>
             <dt>Email</dt>
-            <dd>{{ cliente[2] }}</dd>
+            <dd>{{ cliente[2] if cliente[2] else '—' }}</dd>
+            <dt>Teléfono</dt>
+            <dd>{{ cliente[3] if cliente[3] else '—' }}</dd>
         </dl>
-    </div>
-
-    <div class="acciones">
-        <a href="/clientes/{{ cliente[0] }}/editar">Editar</a>
-        <a href="/clientes">← Volver a clientes</a>
+        {% if cliente[5] %}
+            <h3>Notas generales</h3>
+            <p>{{ cliente[5] }}</p>
+        {% endif %}
     </div>
 
     <div class="tarjeta">
-        <h2>Notas</h2>
-        {% if notas %}
-            <ul>
-                {% for nota in notas %}
-                    <li>({{ nota[3] }}) {{ nota[2] }}</li>
+        <h2>Proyectos</h2>
+        {% if proyectos %}
+            {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+            <ul class="lista-proyectos">
+                {% for proyecto in proyectos %}
+                    <li class="proyecto-item">
+                        <div>
+                            <a href="/proyectos/{{ proyecto[0] }}" class="proyecto-titulo">{{ proyecto[1] }}</a>
+                            <div class="texto-secundario">Entrega: {{ proyecto[4] if proyecto[4] else '—' }}</div>
+                        </div>
+                        <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
+                    </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Este cliente todavía no tiene notas.</p>
+            <p class="texto-vacio">Este cliente todavía no tiene proyectos.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <h2>Historial de notas</h2>
+        {% if notas %}
+            <ul class="lista-notas">
+                {% for nota in notas %}
+                    <li class="nota-item">
+                        <span class="nota-fecha">{{ nota[3] }}</span>
+                        <p class="nota-contenido">{{ nota[2] }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="texto-vacio">Este cliente todavía no tiene notas.</p>
         {% endif %}
 
         <form method="POST" action="/clientes/{{ cliente[0] }}/resumen-ia">
@@ -37,8 +71,10 @@
         </form>
 
         {% if resumen %}
-            <h3>Resumen generado por IA</h3>
-            <p>{{ resumen }}</p>
+            <div class="tarjeta-ia-resultado">
+                <h3>Resumen generado por IA</h3>
+                <p>{{ resumen }}</p>
+            </div>
         {% endif %}
     </div>
 
@@ -58,22 +94,24 @@
         </form>
 
         {% if cuerpo_borrador %}
-            <form method="POST" action="/clientes/{{ cliente[0] }}/correo-ia/enviar">
-                <div class="campo">
-                    <label for="asunto_revision">Asunto</label>
-                    <input type="text" id="asunto_revision" name="asunto" value="{{ asunto_borrador }}">
-                </div>
-                <div class="campo">
-                    <label for="cuerpo">Cuerpo</label>
-                    <textarea id="cuerpo" name="cuerpo" rows="6" cols="50">{{ cuerpo_borrador }}</textarea>
-                </div>
-                <input type="submit" value="Enviar correo" data-cargando="Enviando...">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            </form>
+            <div class="tarjeta-ia-resultado">
+                <form method="POST" action="/clientes/{{ cliente[0] }}/correo-ia/enviar">
+                    <div class="campo">
+                        <label for="asunto_revision">Asunto</label>
+                        <input type="text" id="asunto_revision" name="asunto" value="{{ asunto_borrador }}">
+                    </div>
+                    <div class="campo">
+                        <label for="cuerpo">Cuerpo</label>
+                        <textarea id="cuerpo" name="cuerpo" rows="6" cols="50">{{ cuerpo_borrador }}</textarea>
+                    </div>
+                    <input type="submit" value="Enviar correo" data-cargando="Enviando...">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                </form>
+            </div>
         {% endif %}
 
         {% if mensaje_envio %}
-            <p>{{ mensaje_envio }}</p>
+            <p class="mensaje-estado">{{ mensaje_envio }}</p>
         {% endif %}
     </div>
 {% endblock %}

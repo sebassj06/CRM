@@ -25,7 +25,8 @@ from core.proyectos import(
     agregar_proyecto,
     editar_proyecto_por_id,
     eliminar_proyecto_por_id,
-    proyecto_esta_por_vencer
+    proyecto_esta_por_vencer,
+    proyectos_de_cliente
 )
 from core.pagos import(
     obtener_pagos,
@@ -153,7 +154,8 @@ def ver_cliente(id):
         return redirect(url_for("ver_clientes"))
     else:
         notas = notas_de_cliente(id, session["agencia_id"])
-        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
+        proyectos = proyectos_de_cliente(id, session["agencia_id"])
+        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
 
 
 @app.route("/clientes/<int:id>/resumen-ia", methods=["POST"])
@@ -166,9 +168,10 @@ def resumen_ia_cliente(id):
         return redirect(url_for("ver_clientes"))
 
     notas = notas_de_cliente(id, session["agencia_id"])
+    proyectos = proyectos_de_cliente(id, session["agencia_id"])
     resumen = resumir_notas_cliente(notas)
 
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, resumen=resumen, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=resumen, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
 
 
 @app.route("/clientes/<int:id>/correo-ia/generar", methods=["POST"])
@@ -186,7 +189,8 @@ def generar_correo_ia(id):
     cuerpo_borrador = redactar_correo(cliente[1], palabras_clave)
 
     notas = notas_de_cliente(id, session["agencia_id"])
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, resumen=None, asunto_borrador=asunto, cuerpo_borrador=cuerpo_borrador, mensaje_envio=None)
+    proyectos = proyectos_de_cliente(id, session["agencia_id"])
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=asunto, cuerpo_borrador=cuerpo_borrador, mensaje_envio=None)
 
 
 @app.route("/clientes/<int:id>/correo-ia/enviar", methods=["POST"])
@@ -215,7 +219,8 @@ def enviar_correo_ia(id):
             mensaje_envio = f"No se pudo enviar el correo: {error}"
 
     notas = notas_de_cliente(id, session["agencia_id"])
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=mensaje_envio)
+    proyectos = proyectos_de_cliente(id, session["agencia_id"])
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=mensaje_envio)
 
    
 @app.route("/clientes/nuevo", methods=["GET", "POST"])
