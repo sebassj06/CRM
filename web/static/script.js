@@ -110,11 +110,11 @@ function inicializarMenuUsuario() {
     });
 }
 
-function inicializarBuscadorClientes() {
-    const input = document.getElementById('buscador-clientes');
-    const tabla = document.getElementById('tabla-clientes');
-    const estadoSinResultados = document.getElementById('estado-sin-resultados');
-    const botonLimpiar = document.getElementById('boton-limpiar-busqueda');
+function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimpiar) {
+    const input = document.getElementById(idInput);
+    const tabla = document.getElementById(idTabla);
+    const estadoSinResultados = document.getElementById(idSinResultados);
+    const botonLimpiar = document.getElementById(idBotonLimpiar);
 
     if (!input || !tabla) {
         return;
@@ -152,8 +152,13 @@ function inicializarBuscadorClientes() {
     }
 }
 
+function inicializarBuscadores() {
+    inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda');
+    inicializarBuscadorTabla('buscador-proyectos', 'tabla-proyectos', 'estado-sin-resultados-proyectos', 'boton-limpiar-busqueda-proyectos');
+}
+
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
 document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
 document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
 document.addEventListener('DOMContentLoaded', inicializarMenuUsuario);
-document.addEventListener('DOMContentLoaded', inicializarBuscadorClientes);
+document.addEventListener('DOMContentLoaded', inicializarBuscadores);

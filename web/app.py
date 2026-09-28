@@ -367,7 +367,8 @@ def ver_proyectos():
             nombre_cliente = "Cliente no encontrado"
         else:
             nombre_cliente = cliente[1]
-        lista.append((proyecto, nombre_cliente))
+        por_vencer = proyecto_esta_por_vencer(proyecto[3], proyecto[4])
+        lista.append((proyecto, nombre_cliente, por_vencer))
     return render_template("proyectos.html", proyectos=lista)
 
 

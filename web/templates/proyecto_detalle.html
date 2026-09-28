@@ -1,40 +1,47 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}{{ proyecto[1] }} · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Proyecto</h1>
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
 
-        {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+    <a href="/proyectos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a proyectos</a>
 
-    <div class="tarjeta">
-        <dl>
-            <dt>Título</dt>
-            <dd>{{ proyecto[1] }}</dd>
-            <dt>Cliente</dt>
-            <dd>{{ nombre_cliente }}</dd>
-            <dt>Estado</dt>
-            <dd><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></dd>
-            <dt>Entrega</dt>
-            <dd>{{ proyecto[4] }}</dd>
-        </dl>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>{{ proyecto[1] }}</h1>
+            <p class="encabezado-descripcion">
+                <a href="/clientes/{{ proyecto[2] }}">{{ nombre_cliente }}</a>
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
+            <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar proyecto</a>
+        </div>
     </div>
 
-    <div class="acciones">
-        <a href="/proyectos/{{ proyecto[0] }}/editar">Editar</a>
-        <a href="/proyectos">← Volver a proyectos</a>
+    <div class="tarjeta">
+        <h2>Detalles</h2>
+        <dl>
+            <dt>Fecha de entrega</dt>
+            <dd>{{ proyecto[4] if proyecto[4] else '—' }}</dd>
+        </dl>
     </div>
 
     <div class="tarjeta">
         <h2>Pagos</h2>
         {% if pagos %}
-            <ul>
+            <ul class="lista-registros">
                 {% for pago in pagos %}
-                    <li>${{ pago[2] }} - {{ pago[3] }}</li>
+                    <li class="registro-item">
+                        <span class="registro-monto">${{ pago[2] }}</span>
+                        <span class="texto-secundario">{{ pago[3] }}</span>
+                    </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Este proyecto todavía no tiene pagos registrados.</p>
+            <p class="texto-vacio">Este proyecto todavía no tiene pagos registrados.</p>
         {% endif %}
     </div>
 
@@ -46,7 +53,10 @@
         </form>
 
         {% if sugerencias %}
-            <p>{{ sugerencias }}</p>
+            <div class="tarjeta-ia-resultado">
+                <h3>Sugerencias generadas por IA</h3>
+                <p>{{ sugerencias }}</p>
+            </div>
         {% endif %}
     </div>
 {% endblock %}

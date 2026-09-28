@@ -1,15 +1,28 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Proyectos · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Proyectos</h1>
-    <a href="/proyectos/nuevo" class="btn btn-primario">Agregar proyecto</a><br><br>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Proyectos</h1>
+            <p class="encabezado-descripcion">Seguí el estado y las fechas de entrega de los proyectos de tus clientes.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/proyectos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo proyecto</a>
+        </div>
+    </div>
 
     {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
 
     {% if proyectos %}
-    <table>
+    <div class="barra-busqueda">
+        {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+        <input type="search" id="buscador-proyectos" placeholder="Buscar por título, cliente o estado..." aria-label="Buscar proyectos">
+    </div>
+
+    <table id="tabla-proyectos">
         <thead>
             <tr>
                 <th>Título</th>
@@ -20,28 +33,41 @@
             </tr>
         </thead>
         <tbody>
-            {% for proyecto, nombre_cliente in proyectos %}
-                <tr>
+            {% for proyecto, nombre_cliente, por_vencer in proyectos %}
+                <tr data-busqueda="{{ (proyecto[1] ~ ' ' ~ nombre_cliente ~ ' ' ~ proyecto[3])|lower }}">
                     <td data-label="Título"><a href="/proyectos/{{ proyecto[0] }}">{{ proyecto[1] }}</a></td>
                     <td data-label="Cliente">{{ nombre_cliente }}</td>
                     <td data-label="Estado"><span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span></td>
-                    <td data-label="Entrega">{{ proyecto[4] }}</td>
+                    <td data-label="Entrega">
+                        {{ proyecto[4] if proyecto[4] else '—' }}
+                        {% if por_vencer %}
+                            <span class="etiqueta-por-vencer">{{ icono('reloj', tamano=13) }} Por vencer</span>
+                        {% endif %}
+                    </td>
                     <td data-label="Acciones">
-                        <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')">
-                            <button type="submit" class="btn btn-peligro">Eliminar</button>
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token()}}">
-                        </form>
+                        <div class="acciones-fila">
+                            <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar el proyecto {{ proyecto[1] }}? Esta acción no se puede deshacer.')">
+                                <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
                     </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <div id="estado-sin-resultados-proyectos" class="tarjeta estado-vacio" hidden>
+        <h2>No encontramos coincidencias</h2>
+        <p>Probá con otro título, cliente o estado, o limpiá la búsqueda para ver todos tus proyectos.</p>
+        <button type="button" id="boton-limpiar-busqueda-proyectos" class="btn btn-secundario">Limpiar búsqueda</button>
+    </div>
     {% else %}
     <div class="tarjeta estado-vacio">
         <h2>Aún no tenés proyectos</h2>
         <p>Creá tu primer proyecto para empezar a organizar las entregas de tus clientes.</p>
-        <a href="/proyectos/nuevo" class="btn btn-primario">Agregar proyecto</a>
+        <a href="/proyectos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar proyecto</a>
     </div>
     {% endif %}
 {% endblock %}
