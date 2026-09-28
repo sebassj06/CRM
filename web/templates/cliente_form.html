@@ -32,10 +32,13 @@
             <input type="text" id="notas" name="notas" value="{{ cliente[5] if cliente else '' }}">
         </div>
 
-        {% if cliente %}
-            <input type="submit" value="Guardar cambios">
-        {% else %}
-            <input type="submit" value="Guardar">
-        {% endif %}
+        <div class="acciones-formulario">
+            {% if cliente %}
+                <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+            {% else %}
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            {% endif %}
+            <a href="/clientes" class="btn btn-ghost">Cancelar</a>
+        </div>
     </form>
 {% endblock %}

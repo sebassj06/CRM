@@ -110,7 +110,50 @@ function inicializarMenuUsuario() {
     });
 }
 
+function inicializarBuscadorClientes() {
+    const input = document.getElementById('buscador-clientes');
+    const tabla = document.getElementById('tabla-clientes');
+    const estadoSinResultados = document.getElementById('estado-sin-resultados');
+    const botonLimpiar = document.getElementById('boton-limpiar-busqueda');
+
+    if (!input || !tabla) {
+        return;
+    }
+
+    const filas = tabla.querySelectorAll('tbody tr');
+
+    function filtrar() {
+        const termino = input.value.trim().toLowerCase();
+        let visibles = 0;
+
+        filas.forEach(function (fila) {
+            const texto = fila.dataset.busqueda || fila.textContent.toLowerCase();
+            const coincide = texto.includes(termino);
+            fila.style.display = coincide ? '' : 'none';
+            if (coincide) {
+                visibles++;
+            }
+        });
+
+        tabla.hidden = visibles === 0;
+        if (estadoSinResultados) {
+            estadoSinResultados.hidden = visibles !== 0;
+        }
+    }
+
+    input.addEventListener('input', filtrar);
+
+    if (botonLimpiar) {
+        botonLimpiar.addEventListener('click', function () {
+            input.value = '';
+            filtrar();
+            input.focus();
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
 document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
 document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
 document.addEventListener('DOMContentLoaded', inicializarMenuUsuario);
+document.addEventListener('DOMContentLoaded', inicializarBuscadorClientes);

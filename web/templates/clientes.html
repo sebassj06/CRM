@@ -1,42 +1,66 @@
 {% extends "base.html"%}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Clientes · CRM Agencia{% endblock %}
 
 {% block content %}
-   <h1>Clientes</h1>
-    <a href="/clientes/nuevo" class="btn btn-primario">Agregar clientes</a>
-    <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a><br><br>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Clientes</h1>
+            <p class="encabezado-descripcion">Gestioná la información de contacto y el historial de tus clientes.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/clientes/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo cliente</a>
+            <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a>
+        </div>
+    </div>
 
    {% if clientes %}
-   <table>
+   <div class="barra-busqueda">
+       {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+       <input type="search" id="buscador-clientes" placeholder="Buscar por nombre, email o empresa..." aria-label="Buscar clientes">
+   </div>
+
+   <table id="tabla-clientes">
        <thead>
            <tr>
-               <th>Nombre</th>
+               <th>Cliente</th>
                <th>Email</th>
                <th>Acciones</th>
            </tr>
        </thead>
        <tbody>
            {% for cliente in clientes %}
-               <tr>
-                   <td data-label="Nombre"><a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a></td>
+               <tr data-busqueda="{{ (cliente[1] ~ ' ' ~ cliente[2] ~ ' ' ~ (cliente[4] or ''))|lower }}">
+                   <td data-label="Cliente">
+                       <a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a>
+                       {% if cliente[4] %}<div class="texto-secundario">{{ cliente[4] }}</div>{% endif %}
+                   </td>
                    <td data-label="Email">{{ cliente[2] }}</td>
                    <td data-label="Acciones">
-                        <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')">
-                        <button type="submit" class="btn btn-peligro">Eliminar</button>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                       </form>
+                        <div class="acciones-fila">
+                            <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar a {{ cliente[1] }}? Esta acción no se puede deshacer.')">
+                                <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
                    </td>
                </tr>
            {% endfor %}
        </tbody>
    </table>
+
+   <div id="estado-sin-resultados" class="tarjeta estado-vacio" hidden>
+       <h2>No encontramos coincidencias</h2>
+       <p>Probá con otro nombre, email o empresa, o limpiá la búsqueda para ver todos tus clientes.</p>
+       <button type="button" id="boton-limpiar-busqueda" class="btn btn-secundario">Limpiar búsqueda</button>
+   </div>
    {% else %}
    <div class="tarjeta estado-vacio">
        <h2>Aún no tenés clientes</h2>
        <p>Agregá tu primer cliente o importalos desde un archivo CSV/Excel para empezar a organizar tu agencia.</p>
-       <a href="/clientes/nuevo" class="btn btn-primario">Agregar cliente</a>
+       <a href="/clientes/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar cliente</a>
    </div>
    {% endif %}
 {% endblock %}
