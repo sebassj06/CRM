@@ -3,28 +3,55 @@
 {% block title %}Configuración · CRM Agencia{% endblock %}
 
 {% block content %}
-    <div class="contenedor-angosto">
-        <h1>Configuración</h1>
-        <h2>Automatizaciones</h2>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Configuración</h1>
+            <p class="encabezado-descripcion">Conectá las automatizaciones de tu agencia.</p>
+        </div>
+    </div>
 
-        <form method="POST" class="formulario">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <form method="POST" class="formulario formulario-ancho">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="seccion-config">
+            <div class="seccion-config-encabezado">
+                <h2>Telegram</h2>
+                {% if agencia[2] %}
+                    <span class="badge badge-completado">Conectado</span>
+                {% else %}
+                    <span class="badge badge-pendiente">No configurado</span>
+                {% endif %}
+            </div>
+            <p class="texto-secundario">Avisa por Telegram cuando un proyecto está por vencer.</p>
             <div class="campo">
-                <label for="telegram_chat_id">Telegram — Chat ID</label>
+                <label for="telegram_chat_id">Chat ID</label>
                 <input type="text" id="telegram_chat_id" name="telegram_chat_id" value="{{ agencia[2] or '' }}">
                 <p class="ayuda-campo">Escribile a <strong>@userinfobot</strong> en Telegram y te va a responder con tu Chat ID.</p>
             </div>
+        </div>
+
+        <div class="seccion-config">
+            <div class="seccion-config-encabezado">
+                <h2>Gmail</h2>
+                {% if agencia[3] and agencia[4] %}
+                    <span class="badge badge-completado">Conectado</span>
+                {% else %}
+                    <span class="badge badge-pendiente">No configurado</span>
+                {% endif %}
+            </div>
+            <p class="texto-secundario">Envía correos a tus clientes directamente desde el CRM.</p>
             <div class="campo">
-                <label for="gmail_user">Gmail — Usuario</label>
+                <label for="gmail_user">Usuario</label>
                 <input type="text" id="gmail_user" name="gmail_user" value="{{ agencia[3] or '' }}">
                 <p class="ayuda-campo">La dirección de Gmail completa desde la que se van a enviar los correos.</p>
             </div>
             <div class="campo">
-                <label for="gmail_app_password">Gmail — Contraseña de aplicación</label>
-                <input type="password" id="gmail_app_password" name="gmail_app_password" placeholder="Dejá en blanco para no cambiarla">
+                <label for="gmail_app_password">Contraseña de aplicación</label>
+                <input type="password" id="gmail_app_password" name="gmail_app_password" placeholder="{{ 'Dejá en blanco para no cambiarla' if agencia[4] else 'No configurada' }}">
                 <p class="ayuda-campo">Necesitás la verificación en dos pasos activada en tu cuenta de Google. Generala en <strong>myaccount.google.com/apppasswords</strong> — no es tu contraseña normal de Gmail.</p>
             </div>
-            <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
-        </form>
-    </div>
+        </div>
+
+        <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+    </form>
 {% endblock %}
