@@ -41,13 +41,13 @@
 
 
 :root[data-theme="dark"] {
-    --color-bg: #000000;
-    --color-surface: #121212;
+    --color-bg: #0b0b0d;
+    --color-surface: #17171a;
     --color-text: #e6e6e6;
-    --color-text-muted: #999999;
-    --color-border: #2a2a2a;
-    --color-heading: #ffffff;
-    --color-surface-elevated: #1e1e1e;
+    --color-text-muted: #9a9aa0;
+    --color-border: #2c2c31;
+    --color-heading: #f5f5f5;
+    --color-surface-elevated: #212126;
 }
 
 * {
@@ -325,12 +325,13 @@ body {
     top: calc(100% + 8px);
     right: 0;
     min-width: 230px;
+    max-width: calc(100vw - 40px);
     background-color: var(--color-surface-elevated);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     padding: var(--space-2) 0;
-    z-index: 60;
+    z-index: 110;
 }
 
 .menu-usuario.abierto .dropdown-usuario {
@@ -749,21 +750,26 @@ tbody td:first-child a:hover {
 
 .metrica-encabezado {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: var(--space-2);
     margin-bottom: var(--space-2);
 }
 
 .metrica-etiqueta {
+    flex: 1;
+    min-width: 0;
     font-size: var(--font-size-small);
     font-weight: 600;
     color: var(--color-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
 }
 
 .metrica-icono {
     color: var(--color-accent);
+    flex-shrink: 0;
 }
 
 .metrica-numero {
@@ -771,6 +777,12 @@ tbody td:first-child a:hover {
     font-weight: 700;
     color: var(--color-heading);
     line-height: 1.1;
+}
+
+.metrica-descripcion {
+    margin-top: 2px;
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
 }
 
 .paneles-secundarios {
@@ -784,14 +796,15 @@ tbody td:first-child a:hover {
     flex: 1;
     min-width: 280px;
     margin-bottom: 0;
+    padding: var(--space-4);
 }
 
 .barra-progreso {
     background-color: var(--color-bg);
     border-radius: 999px;
-    height: 10px;
+    height: 8px;
     overflow: hidden;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
 }
 
 .barra-progreso-relleno {
@@ -801,8 +814,8 @@ tbody td:first-child a:hover {
 }
 
 .anillo-porcentaje {
-    width: 140px;
-    height: 140px;
+    width: 104px;
+    height: 104px;
     border-radius: 50%;
     background: conic-gradient(var(--color-accent) var(--porcentaje), var(--color-border) 0);
     display: flex;
@@ -812,14 +825,14 @@ tbody td:first-child a:hover {
 }
 
 .anillo-hueco {
-    width: 100px;
-    height: 100px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
     background-color: var(--color-surface);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--color-heading);
 }
@@ -837,10 +850,25 @@ tbody td:first-child a:hover {
     margin: 0;
 }
 
+.tarjeta-ia {
+    padding: var(--space-4) var(--space-5);
+}
+
+.tarjeta-ia-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.tarjeta-ia-form {
+    flex-shrink: 0;
+}
+
 .tarjeta-ia-encabezado {
     display: flex;
     gap: var(--space-3);
-    margin-bottom: var(--space-4);
 }
 
 .tarjeta-ia-icono {
@@ -849,10 +877,14 @@ tbody td:first-child a:hover {
     margin-top: 3px;
 }
 
+.tarjeta-ia-encabezado h2 {
+    margin-bottom: 2px;
+}
+
 .tarjeta-ia-descripcion {
     color: var(--color-text-muted);
     font-size: 0.9rem;
-    margin: 4px 0 0 0;
+    margin: 0;
 }
 
 .tarjeta-ia-resultado {

@@ -25,6 +25,7 @@
                 {{ icono('clientes', clase='metrica-icono') }}
             </div>
             <div class="metrica-numero">{{ total_clientes }}</div>
+            <div class="metrica-descripcion">Clientes registrados</div>
         </div>
         <div class="metrica">
             <div class="metrica-encabezado">
@@ -32,6 +33,7 @@
                 {{ icono('proyectos', clase='metrica-icono') }}
             </div>
             <div class="metrica-numero">{{ total_proyectos }}</div>
+            <div class="metrica-descripcion">Proyectos</div>
         </div>
         <div class="metrica">
             <div class="metrica-encabezado">
@@ -39,6 +41,7 @@
                 {{ icono('lista', clase='metrica-icono') }}
             </div>
             <div class="metrica-numero">{{ total_pagos }}</div>
+            <div class="metrica-descripcion">Pagos registrados</div>
         </div>
         <div class="metrica">
             <div class="metrica-encabezado">
@@ -46,6 +49,7 @@
                 {{ icono('pagos', clase='metrica-icono') }}
             </div>
             <div class="metrica-numero">${{ _cobrado_texto }}</div>
+            <div class="metrica-descripcion">Total cobrado</div>
         </div>
     </div>
 
@@ -75,17 +79,19 @@
     </div>
 
     <div class="tarjeta tarjeta-ia">
-        <div class="tarjeta-ia-encabezado">
-            {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
-            <div>
-                <h2>Resumen ejecutivo</h2>
-                <p class="tarjeta-ia-descripcion">Generá una visión general del rendimiento de tu agencia con IA.</p>
+        <div class="tarjeta-ia-fila">
+            <div class="tarjeta-ia-encabezado">
+                {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+                <div>
+                    <h2>Resumen ejecutivo</h2>
+                    <p class="tarjeta-ia-descripcion">Generá una visión general del rendimiento de tu agencia con IA.</p>
+                </div>
             </div>
+            <form method="POST" action="/resumen-ejecutivo" class="tarjeta-ia-form">
+                <input type="submit" value="Generar resumen" data-cargando="Generando resumen...">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
         </div>
-        <form method="POST" action="/resumen-ejecutivo">
-            <input type="submit" value="Generar resumen" data-cargando="Generando resumen...">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        </form>
 
         {% if resumen %}
             <div class="tarjeta-ia-resultado">
