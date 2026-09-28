@@ -1,13 +1,26 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Notas · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Notas</h1>
-    <a href="/notas/nuevo" class="btn btn-primario">Agregar nota</a><br><br>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Notas</h1>
+            <p class="encabezado-descripcion">Historial de seguimiento con tus clientes.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/notas/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nueva nota</a>
+        </div>
+    </div>
 
     {% if notas %}
-    <table>
+    <div class="barra-busqueda">
+        {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+        <input type="search" id="buscador-notas" placeholder="Buscar por cliente o contenido..." aria-label="Buscar notas">
+    </div>
+
+    <table id="tabla-notas">
         <thead>
             <tr>
                 <th>Cliente</th>
@@ -18,26 +31,34 @@
         </thead>
         <tbody>
             {% for nota, nombre_cliente in notas %}
-                <tr>
+                <tr data-busqueda="{{ (nombre_cliente ~ ' ' ~ nota[2])|lower }}">
                     <td data-label="Cliente"><a href="/notas/{{ nota[0] }}">{{ nombre_cliente }}</a></td>
                     <td data-label="Nota"><span class="texto-truncado" title="{{ nota[2] }}">{{ nota[2] }}</span></td>
                     <td data-label="Fecha">{{ nota[3] }}</td>
                     <td data-label="Acciones">
-                        <a href="/notas/{{ nota[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/notas/{{ nota[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')">
-                            <button type="submit" class="btn btn-peligro">Eliminar</button>
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        </form>
+                        <div class="acciones-fila">
+                            <a href="/notas/{{ nota[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <form method="POST" action="/notas/{{ nota[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar esta nota? Esta acción no se puede deshacer.')">
+                                <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
                     </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <div id="estado-sin-resultados-notas" class="tarjeta estado-vacio" hidden>
+        <h2>No encontramos coincidencias</h2>
+        <p>Probá con otro cliente o palabra, o limpiá la búsqueda para ver todas tus notas.</p>
+        <button type="button" id="boton-limpiar-busqueda-notas" class="btn btn-secundario">Limpiar búsqueda</button>
+    </div>
     {% else %}
     <div class="tarjeta estado-vacio">
         <h2>Aún no tenés notas</h2>
         <p>Agregá tu primera nota para llevar un historial de seguimiento con tus clientes.</p>
-        <a href="/notas/nuevo" class="btn btn-primario">Agregar nota</a>
+        <a href="/notas/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar nota</a>
     </div>
     {% endif %}
 {% endblock %}

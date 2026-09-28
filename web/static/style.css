@@ -443,6 +443,10 @@ p {
     max-width: 400px;
 }
 
+.formulario h2 {
+    margin-top: 0;
+}
+
 .formulario input[type="text"],
 .formulario input[type="password"],
 .formulario input[type="date"],

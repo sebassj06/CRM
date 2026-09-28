@@ -8,26 +8,29 @@
     {% else %}
         <h1>Nueva nota</h1>
 
-        <form method="POST" action="/notas/generar-ia" class="formulario">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="campo">
-                <label for="cliente_id_ia">Cliente</label>
-                <select id="cliente_id_ia" name="cliente_id">
-                    {% for cliente in clientes %}
-                        <option value="{{ cliente[0] }}" {% if cliente_id_seleccionado and cliente[0]|string == cliente_id_seleccionado %}selected{% endif %}>{{ cliente[1] }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="campo">
-                <label for="palabras_clave">Palabras clave</label>
-                <input type="text" id="palabras_clave" name="palabras_clave">
-            </div>
-            <input type="submit" value="Generar borrador con IA" data-cargando="Generando borrador...">
-        </form>
-        <hr>
+        <div class="formulario">
+            <h2>Redactar con IA</h2>
+            <form method="POST" action="/notas/generar-ia">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="campo">
+                    <label for="cliente_id_ia">Cliente</label>
+                    <select id="cliente_id_ia" name="cliente_id">
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente[0] }}" {% if cliente_id_seleccionado and cliente[0]|string == cliente_id_seleccionado %}selected{% endif %}>{{ cliente[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="palabras_clave">Palabras clave</label>
+                    <input type="text" id="palabras_clave" name="palabras_clave">
+                </div>
+                <input type="submit" value="Generar borrador con IA" data-cargando="Generando borrador...">
+            </form>
+        </div>
     {% endif %}
 
     <form method="POST" action="{{ url_for('nueva_nota') }}" class="formulario">
+        <h2>Detalles de la nota</h2>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="campo">
             <label for="cliente_id">Cliente</label>
@@ -46,10 +49,13 @@
             <input type="date" id="fecha" name="fecha" value="{{ nota[3] if nota else fecha_hoy }}">
         </div>
 
-        {% if nota %}
-            <input type="submit" value="Guardar cambios">
-        {% else %}
-            <input type="submit" value="Guardar">
-        {% endif %}
+        <div class="acciones-formulario">
+            {% if nota %}
+                <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+            {% else %}
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            {% endif %}
+            <a href="/notas" class="btn btn-ghost">Cancelar</a>
+        </div>
     </form>
 {% endblock %}
