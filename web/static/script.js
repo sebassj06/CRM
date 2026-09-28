@@ -155,6 +155,7 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
 function inicializarBuscadores() {
     inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda');
     inicializarBuscadorTabla('buscador-proyectos', 'tabla-proyectos', 'estado-sin-resultados-proyectos', 'boton-limpiar-busqueda-proyectos');
+    inicializarBuscadorTabla('buscador-pagos', 'tabla-pagos', 'estado-sin-resultados-pagos', 'boton-limpiar-busqueda-pagos');
 }
 
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);

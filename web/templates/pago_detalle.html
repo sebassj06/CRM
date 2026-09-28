@@ -1,23 +1,33 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Pago de {{ titulo_proyecto }} · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Pago</h1>
+    {% set _monto_texto = "{:,.2f}".format(pago[2]) %}
+    {% if _monto_texto.endswith('.00') %}
+        {% set _monto_texto = _monto_texto[:-3] %}
+    {% endif %}
+
+    <a href="/pagos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a pagos</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>${{ _monto_texto }}</h1>
+            <p class="encabezado-descripcion">
+                <a href="/proyectos/{{ pago[1] }}">{{ titulo_proyecto }}</a>
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar pago</a>
+        </div>
+    </div>
 
     <div class="tarjeta">
+        <h2>Detalles</h2>
         <dl>
-            <dt>Proyecto</dt>
-            <dd>{{ titulo_proyecto }}</dd>
-            <dt>Monto</dt>
-            <dd>${{ pago[2] }}</dd>
             <dt>Fecha</dt>
             <dd>{{ pago[3] }}</dd>
         </dl>
-    </div>
-
-    <div class="acciones">
-        <a href="/pagos/{{ pago[0] }}/editar">Editar</a>
-        <a href="/pagos">← Volver a pagos</a>
     </div>
 {% endblock %}

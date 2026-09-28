@@ -787,6 +787,11 @@ tbody td:first-child a:hover {
     color: var(--color-warning);
 }
 
+.celda-monto {
+    font-weight: 700;
+    color: var(--color-heading);
+}
+
 .acciones {
     margin-bottom: var(--space-5);
 }

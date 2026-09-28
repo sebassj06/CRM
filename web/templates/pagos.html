@@ -1,13 +1,26 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Pagos · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Pagos</h1>
-    <a href="/pagos/nuevo" class="btn btn-primario">Agregar pago</a><br><br>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Pagos</h1>
+            <p class="encabezado-descripcion">Llevá el control de lo cobrado por cada proyecto.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/pagos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo pago</a>
+        </div>
+    </div>
 
     {% if pagos %}
-    <table>
+    <div class="barra-busqueda">
+        {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+        <input type="search" id="buscador-pagos" placeholder="Buscar por proyecto..." aria-label="Buscar pagos">
+    </div>
+
+    <table id="tabla-pagos">
         <thead>
             <tr>
                 <th>Proyecto</th>
@@ -18,26 +31,38 @@
         </thead>
         <tbody>
             {% for pago, titulo_proyecto in pagos %}
-                <tr>
+                {% set _monto_texto = "{:,.2f}".format(pago[2]) %}
+                {% if _monto_texto.endswith('.00') %}
+                    {% set _monto_texto = _monto_texto[:-3] %}
+                {% endif %}
+                <tr data-busqueda="{{ titulo_proyecto|lower }}">
                     <td data-label="Proyecto"><a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a></td>
-                    <td data-label="Monto">${{ pago[2] }}</td>
+                    <td data-label="Monto" class="celda-monto">${{ _monto_texto }}</td>
                     <td data-label="Fecha">{{ pago[3] }}</td>
                     <td data-label="Acciones">
-                        <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">Editar</a>
-                        <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')">
-                            <button type="submit" class="btn btn-peligro">Eliminar</button>
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        </form>
+                        <div class="acciones-fila">
+                            <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar este pago de ${{ _monto_texto }}? Esta acción no se puede deshacer.')">
+                                <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
                     </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <div id="estado-sin-resultados-pagos" class="tarjeta estado-vacio" hidden>
+        <h2>No encontramos coincidencias</h2>
+        <p>Probá con otro proyecto, o limpiá la búsqueda para ver todos tus pagos.</p>
+        <button type="button" id="boton-limpiar-busqueda-pagos" class="btn btn-secundario">Limpiar búsqueda</button>
+    </div>
     {% else %}
     <div class="tarjeta estado-vacio">
         <h2>Aún no tenés pagos registrados</h2>
         <p>Registrá un pago para empezar a llevar el control de lo cobrado por proyecto.</p>
-        <a href="/pagos/nuevo" class="btn btn-primario">Agregar pago</a>
+        <a href="/pagos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar pago</a>
     </div>
     {% endif %}
 {% endblock %}

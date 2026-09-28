@@ -28,10 +28,13 @@
             <input type="date" id="fecha" name="fecha" value="{{ pago[3] if pago else '' }}">
         </div>
 
-        {% if pago %}
-            <input type="submit" value="Guardar cambios">
-        {% else %}
-            <input type="submit" value="Guardar">
-        {% endif %}
+        <div class="acciones-formulario">
+            {% if pago %}
+                <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+            {% else %}
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            {% endif %}
+            <a href="/pagos" class="btn btn-ghost">Cancelar</a>
+        </div>
     </form>
 {% endblock %}
