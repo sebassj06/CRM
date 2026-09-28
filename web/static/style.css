@@ -18,6 +18,7 @@
     --color-success-bg: #dcfce7;
     --color-warning: #92400e;
     --color-warning-bg: #fef3c7;
+    --color-warning-text: var(--color-warning);
     --color-danger: #991b1b;
     --color-danger-bg: #fee2e2;
 
@@ -48,6 +49,7 @@
     --color-border: #2c2c31;
     --color-heading: #f5f5f5;
     --color-surface-elevated: #212126;
+    --color-warning-text: #f5b551;
 }
 
 * {
@@ -467,6 +469,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--space-2);
     margin-bottom: var(--space-1);
 }
@@ -695,9 +698,15 @@ tbody td:first-child a:hover {
     padding: var(--space-12) var(--space-5);
 }
 
+.estado-vacio h1,
 .estado-vacio h2 {
     margin-top: 0;
     margin-bottom: var(--space-2);
+}
+
+.icono-404 {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-3);
 }
 
 .estado-vacio p {
@@ -755,9 +764,14 @@ tbody td:first-child a:hover {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--space-3);
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--color-border);
+}
+
+.proyecto-item > div {
+    min-width: 0;
 }
 
 .proyecto-item:last-child {
@@ -795,6 +809,7 @@ tbody td:first-child a:hover {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--space-3);
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--color-border);
@@ -816,7 +831,7 @@ tbody td:first-child a:hover {
     margin-top: 2px;
     font-size: var(--font-size-small);
     font-weight: 600;
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .celda-monto {
