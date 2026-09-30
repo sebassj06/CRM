@@ -10,7 +10,7 @@
             <p class="encabezado-descripcion">Gestioná la información de contacto y el historial de tus clientes.</p>
         </div>
         <div class="encabezado-acciones">
-            <a href="/clientes/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo cliente</a>
+            <button type="button" class="btn btn-primario boton-nuevo-cliente">{{ icono('mas', tamano=16) }} Nuevo cliente</button>
             <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a>
         </div>
     </div>
@@ -39,7 +39,13 @@
                    <td data-label="Email">{{ cliente[2] }}</td>
                    <td data-label="Acciones">
                         <div class="acciones-fila">
-                            <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <button type="button" class="btn btn-secundario btn-sm boton-editar-cliente"
+                                data-id="{{ cliente[0] }}"
+                                data-nombre="{{ cliente[1] }}"
+                                data-email="{{ cliente[2] }}"
+                                data-telefono="{{ cliente[3] or '' }}"
+                                data-empresa="{{ cliente[4] or '' }}"
+                                data-notas="{{ cliente[5] or '' }}">{{ icono('editar', tamano=15) }} Editar</button>
                             <form method="POST" action="/clientes/{{ cliente[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar a {{ cliente[1] }}? Esta acción no se puede deshacer.')">
                                 <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -60,7 +66,41 @@
    <div class="tarjeta estado-vacio">
        <h2>Aún no tenés clientes</h2>
        <p>Agregá tu primer cliente o importalos desde un archivo CSV/Excel para empezar a organizar tu agencia.</p>
-       <a href="/clientes/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar cliente</a>
+       <button type="button" class="btn btn-primario boton-nuevo-cliente">{{ icono('mas', tamano=16) }} Agregar cliente</button>
    </div>
    {% endif %}
+
+    <dialog id="modal-cliente" class="modal">
+        <form method="POST" id="formulario-cliente" class="formulario">
+            <div class="modal-encabezado">
+                <h2 id="modal-cliente-titulo">Nuevo cliente</h2>
+                <button type="button" id="boton-cerrar-modal-cliente" class="btn-cerrar-modal" aria-label="Cerrar">{{ icono('cerrar', tamano=18) }}</button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="campo">
+                <label for="modal-nombre">Nombre</label>
+                <input type="text" id="modal-nombre" name="nombre">
+            </div>
+            <div class="campo">
+                <label for="modal-email">Email</label>
+                <input type="email" id="modal-email" name="email">
+            </div>
+            <div class="campo">
+                <label for="modal-telefono">Teléfono</label>
+                <input type="text" id="modal-telefono" name="telefono">
+            </div>
+            <div class="campo">
+                <label for="modal-empresa">Empresa</label>
+                <input type="text" id="modal-empresa" name="empresa">
+            </div>
+            <div class="campo">
+                <label for="modal-notas">Notas</label>
+                <input type="text" id="modal-notas" name="notas">
+            </div>
+            <div class="acciones-formulario">
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+                <button type="button" id="boton-cancelar-modal-cliente" class="btn btn-ghost">Cancelar</button>
+            </div>
+        </form>
+    </dialog>
 {% endblock %}

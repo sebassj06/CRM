@@ -152,6 +152,62 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
     }
 }
 
+function inicializarModalCliente() {
+    const modal = document.getElementById('modal-cliente');
+    const formulario = document.getElementById('formulario-cliente');
+    const titulo = document.getElementById('modal-cliente-titulo');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function abrirParaNuevo() {
+        formulario.reset();
+        formulario.action = '/clientes/nuevo';
+        titulo.textContent = 'Nuevo cliente';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        formulario.action = `/clientes/${boton.dataset.id}/editar`;
+        formulario.elements['nombre'].value = boton.dataset.nombre || '';
+        formulario.elements['email'].value = boton.dataset.email || '';
+        formulario.elements['telefono'].value = boton.dataset.telefono || '';
+        formulario.elements['empresa'].value = boton.dataset.empresa || '';
+        formulario.elements['notas'].value = boton.dataset.notas || '';
+        titulo.textContent = 'Editar cliente';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nuevo-cliente').forEach(function (boton) {
+        boton.addEventListener('click', abrirParaNuevo);
+    });
+
+    document.querySelectorAll('.boton-editar-cliente').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-cliente');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-cliente');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    // Cerrar al hacer click afuera del contenido (sobre el backdrop).
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+}
+
 function inicializarBuscadores() {
     inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda');
     inicializarBuscadorTabla('buscador-proyectos', 'tabla-proyectos', 'estado-sin-resultados-proyectos', 'boton-limpiar-busqueda-proyectos');
@@ -164,3 +220,4 @@ document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
 document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
 document.addEventListener('DOMContentLoaded', inicializarMenuUsuario);
 document.addEventListener('DOMContentLoaded', inicializarBuscadores);
+document.addEventListener('DOMContentLoaded', inicializarModalCliente);

@@ -479,6 +479,7 @@ p {
 }
 
 .formulario input[type="text"],
+.formulario input[type="email"],
 .formulario input[type="password"],
 .formulario input[type="date"],
 .formulario textarea {
@@ -495,6 +496,50 @@ p {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     font-family: inherit;
+}
+
+dialog.modal {
+    padding: 0;
+    border: none;
+    background: none;
+    width: 90%;
+    max-width: 480px;
+}
+
+dialog.modal::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+dialog.modal .formulario {
+    max-width: none;
+    margin: 0;
+}
+
+.modal-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.modal-encabezado h2 {
+    margin: 0;
+}
+
+.btn-cerrar-modal {
+    display: flex;
+    background: none;
+    border: none;
+    padding: var(--space-1);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.btn-cerrar-modal:hover {
+    color: var(--color-text);
+    background-color: var(--color-bg);
 }
 
 .btn,
