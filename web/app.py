@@ -13,9 +13,10 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
-from core.clientes import (obtener_clientes, 
+from core.clientes import (obtener_clientes,
                            obtener_cliente_por_id,
-                           agregar_cliente, 
+                           obtener_cliente_por_email,
+                           agregar_cliente,
                            editar_cliente_por_id,
                            eliminar_cliente_por_id
 )
@@ -317,6 +318,10 @@ def nuevo_cliente():
             flash("Nombre y email son obligatorios.", "error")
             return redirect(url_for("nuevo_cliente"))
 
+        if obtener_cliente_por_email(email, session["agencia_id"]):
+            flash(f"Ya existe un cliente con el email '{email}'.", "error")
+            return redirect(url_for("nuevo_cliente"))
+
         agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"])
         
         flash("Cliente agregado correctamente", "exito")
@@ -383,6 +388,11 @@ def editar_cliente_ruta(id):
         
         if nombre == "" or email == "":
             flash("Nombre y email son obligatorios.", "error")
+            return redirect(url_for("editar_cliente_ruta", id=id))
+
+        otro_cliente = obtener_cliente_por_email(email, session["agencia_id"])
+        if otro_cliente and otro_cliente[0] != id:
+            flash(f"Ya existe otro cliente con el email '{email}'.", "error")
             return redirect(url_for("editar_cliente_ruta", id=id))
 
         editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"])
