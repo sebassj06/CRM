@@ -2,7 +2,7 @@ import csv
 import io
 from datetime import date, datetime
 import openpyxl
-from core.clientes import agregar_cliente, obtener_cliente_por_email
+from core.clientes import agregar_cliente, obtener_cliente_por_email, email_valido
 
 
 def _texto(valor):
@@ -60,7 +60,7 @@ def importar_clientes_desde_archivo(archivo, agencia_id):
         notas = _texto(fila.get("notas"))
         cliente_desde = _texto(fila.get("cliente_desde"))
 
-        if not nombre or not email:
+        if not nombre or not email or not email_valido(email):
             invalidos += 1
             continue
 

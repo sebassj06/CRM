@@ -1,4 +1,14 @@
+import re
 from core.database import obtener_conexion
+
+PATRON_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
+def email_valido(email):
+    """True si el texto tiene forma de email (algo@algo.algo). No verifica que
+    el dominio exista de verdad, solo que el formato sea razonable."""
+    return bool(PATRON_EMAIL.match(email))
+
 
 def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None):
     conexion = obtener_conexion()

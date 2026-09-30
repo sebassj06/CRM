@@ -16,6 +16,7 @@ from flask_limiter.errors import RateLimitExceeded
 from core.clientes import (obtener_clientes,
                            obtener_cliente_por_id,
                            obtener_cliente_por_email,
+                           email_valido,
                            agregar_cliente,
                            editar_cliente_por_id,
                            eliminar_cliente_por_id
@@ -318,6 +319,10 @@ def nuevo_cliente():
             flash("Nombre y email son obligatorios.", "error")
             return redirect(url_for("nuevo_cliente"))
 
+        if not email_valido(email):
+            flash("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "error")
+            return redirect(url_for("nuevo_cliente"))
+
         if obtener_cliente_por_email(email, session["agencia_id"]):
             flash(f"Ya existe un cliente con el email '{email}'.", "error")
             return redirect(url_for("nuevo_cliente"))
@@ -388,6 +393,10 @@ def editar_cliente_ruta(id):
         
         if nombre == "" or email == "":
             flash("Nombre y email son obligatorios.", "error")
+            return redirect(url_for("editar_cliente_ruta", id=id))
+
+        if not email_valido(email):
+            flash("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "error")
             return redirect(url_for("editar_cliente_ruta", id=id))
 
         otro_cliente = obtener_cliente_por_email(email, session["agencia_id"])
