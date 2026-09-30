@@ -156,13 +156,39 @@ function inicializarModalCliente() {
     const modal = document.getElementById('modal-cliente');
     const formulario = document.getElementById('formulario-cliente');
     const titulo = document.getElementById('modal-cliente-titulo');
+    const contenedorError = document.getElementById('modal-cliente-error');
 
     if (!modal || !formulario) {
         return;
     }
 
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            if (boton.tagName === 'INPUT') {
+                boton.value = 'Guardar';
+            } else {
+                boton.textContent = 'Guardar';
+            }
+        }
+    }
+
     function abrirParaNuevo() {
         formulario.reset();
+        ocultarError();
         formulario.action = '/clientes/nuevo';
         titulo.textContent = 'Nuevo cliente';
         modal.showModal();
@@ -170,6 +196,7 @@ function inicializarModalCliente() {
 
     function abrirParaEditar(boton) {
         formulario.reset();
+        ocultarError();
         formulario.action = `/clientes/${boton.dataset.id}/editar`;
         formulario.elements['nombre'].value = boton.dataset.nombre || '';
         formulario.elements['email'].value = boton.dataset.email || '';
@@ -206,6 +233,174 @@ function inicializarModalCliente() {
             modal.close();
         }
     });
+
+    // Envío por AJAX: así, si el servidor devuelve un error (email duplicado,
+    // formato inválido, etc.), lo mostramos adentro del modal en vez de
+    // navegar a la página completa del formulario.
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = '/clientes';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar el cliente.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    // Si alguien entra directo por /clientes/nuevo o /clientes/<id>/editar,
+    // el servidor redirige acá con un parámetro en la URL y abrimos el modal solo.
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nuevo')) {
+        abrirParaNuevo();
+    } else if (parametros.has('editar')) {
+        const botonCliente = document.querySelector(`.boton-editar-cliente[data-id="${parametros.get('editar')}"]`);
+        if (botonCliente) {
+            abrirParaEditar(botonCliente);
+        }
+    }
+
+    if (parametros.has('nuevo') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nuevo');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarModalProyecto() {
+    const modal = document.getElementById('modal-proyecto');
+    const formulario = document.getElementById('formulario-proyecto');
+    const titulo = document.getElementById('modal-proyecto-titulo');
+    const contenedorError = document.getElementById('modal-proyecto-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            if (boton.tagName === 'INPUT') {
+                boton.value = 'Guardar';
+            } else {
+                boton.textContent = 'Guardar';
+            }
+        }
+    }
+
+    function abrirParaNuevo() {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/proyectos/nuevo';
+        titulo.textContent = 'Nuevo proyecto';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/proyectos/${boton.dataset.id}/editar`;
+        formulario.elements['titulo'].value = boton.dataset.titulo || '';
+        formulario.elements['cliente_id'].value = boton.dataset.clienteId || '';
+        formulario.elements['estado'].value = boton.dataset.estado || '';
+        formulario.elements['fecha_entrega'].value = boton.dataset.fechaEntrega || '';
+        titulo.textContent = 'Editar proyecto';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nuevo-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', abrirParaNuevo);
+    });
+
+    document.querySelectorAll('.boton-editar-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-proyecto');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-proyecto');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = '/proyectos';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar el proyecto.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nuevo')) {
+        abrirParaNuevo();
+    } else if (parametros.has('editar')) {
+        const botonProyecto = document.querySelector(`.boton-editar-proyecto[data-id="${parametros.get('editar')}"]`);
+        if (botonProyecto) {
+            abrirParaEditar(botonProyecto);
+        }
+    }
+
+    if (parametros.has('nuevo') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nuevo');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
 }
 
 function inicializarBuscadores() {
@@ -221,3 +416,4 @@ document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
 document.addEventListener('DOMContentLoaded', inicializarMenuUsuario);
 document.addEventListener('DOMContentLoaded', inicializarBuscadores);
 document.addEventListener('DOMContentLoaded', inicializarModalCliente);
+document.addEventListener('DOMContentLoaded', inicializarModalProyecto);

@@ -77,6 +77,7 @@
                 <button type="button" id="boton-cerrar-modal-cliente" class="btn-cerrar-modal" aria-label="Cerrar">{{ icono('cerrar', tamano=18) }}</button>
             </div>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-cliente-error" class="flash flash-error" hidden></div>
             <div class="campo">
                 <label for="modal-nombre">Nombre</label>
                 <input type="text" id="modal-nombre" name="nombre">

@@ -10,7 +10,7 @@
             <p class="encabezado-descripcion">Seguí el estado y las fechas de entrega de los proyectos de tus clientes.</p>
         </div>
         <div class="encabezado-acciones">
-            <a href="/proyectos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo proyecto</a>
+            <button type="button" class="btn btn-primario boton-nuevo-proyecto">{{ icono('mas', tamano=16) }} Nuevo proyecto</button>
         </div>
     </div>
 
@@ -46,7 +46,12 @@
                     </td>
                     <td data-label="Acciones">
                         <div class="acciones-fila">
-                            <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
+                            <button type="button" class="btn btn-secundario btn-sm boton-editar-proyecto"
+                                data-id="{{ proyecto[0] }}"
+                                data-titulo="{{ proyecto[1] }}"
+                                data-cliente-id="{{ proyecto[2] }}"
+                                data-estado="{{ proyecto[3] }}"
+                                data-fecha-entrega="{{ proyecto[4] or '' }}">{{ icono('editar', tamano=15) }} Editar</button>
                             <form method="POST" action="/proyectos/{{ proyecto[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar el proyecto {{ proyecto[1] }}? Esta acción no se puede deshacer.')">
                                 <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -67,7 +72,46 @@
     <div class="tarjeta estado-vacio">
         <h2>Aún no tenés proyectos</h2>
         <p>Creá tu primer proyecto para empezar a organizar las entregas de tus clientes.</p>
-        <a href="/proyectos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar proyecto</a>
+        <button type="button" class="btn btn-primario boton-nuevo-proyecto">{{ icono('mas', tamano=16) }} Agregar proyecto</button>
     </div>
     {% endif %}
+
+    <dialog id="modal-proyecto" class="modal">
+        <form method="POST" id="formulario-proyecto" class="formulario">
+            <div class="modal-encabezado">
+                <h2 id="modal-proyecto-titulo">Nuevo proyecto</h2>
+                <button type="button" id="boton-cerrar-modal-proyecto" class="btn-cerrar-modal" aria-label="Cerrar">{{ icono('cerrar', tamano=18) }}</button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-proyecto-error" class="flash flash-error" hidden></div>
+            <div class="campo">
+                <label for="modal-titulo">Título</label>
+                <input type="text" id="modal-titulo" name="titulo">
+            </div>
+            <div class="campo">
+                <label for="modal-cliente_id">Cliente</label>
+                <select id="modal-cliente_id" name="cliente_id">
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente[0] }}">{{ cliente[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="campo">
+                <label for="modal-estado">Estado</label>
+                <select id="modal-estado" name="estado">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En progreso">En progreso</option>
+                    <option value="Completado">Completado</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="modal-fecha_entrega">Fecha de entrega</label>
+                <input type="date" id="modal-fecha_entrega" name="fecha_entrega">
+            </div>
+            <div class="acciones-formulario">
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+                <button type="button" id="boton-cancelar-modal-proyecto" class="btn btn-ghost">Cancelar</button>
+            </div>
+        </form>
+    </dialog>
 {% endblock %}

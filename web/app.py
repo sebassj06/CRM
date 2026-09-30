@@ -94,6 +94,18 @@ def admin_requerido(f):
         return f(*args, **kwargs)
     return funcion_decorada
 
+
+def es_peticion_ajax():
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def redirigir_o_responder_error(mensaje, endpoint, **kwargs):
+    if es_peticion_ajax():
+        return jsonify({"exito": False, "error": mensaje}), 400
+    flash(mensaje, "error")
+    return redirect(url_for(endpoint, **kwargs))
+
+
 @app.context_processor
 def inyectar_agencia_actual():
     if "agencia_id" in session:
@@ -316,24 +328,24 @@ def nuevo_cliente():
         notas = request.form["notas"]
         
         if nombre == "" or email == "":
-            flash("Nombre y email son obligatorios.", "error")
-            return redirect(url_for("nuevo_cliente"))
+            return redirigir_o_responder_error("Nombre y email son obligatorios.", "nuevo_cliente")
 
         if not email_valido(email):
-            flash("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "error")
-            return redirect(url_for("nuevo_cliente"))
+            return redirigir_o_responder_error("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "nuevo_cliente")
 
         if obtener_cliente_por_email(email, session["agencia_id"]):
-            flash(f"Ya existe un cliente con el email '{email}'.", "error")
-            return redirect(url_for("nuevo_cliente"))
+            return redirigir_o_responder_error(f"Ya existe un cliente con el email '{email}'.", "nuevo_cliente")
 
         agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"])
-        
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Cliente agregado correctamente", "exito")
         return redirect(url_for("ver_clientes"))
           
     else:
-        return render_template("cliente_form.html", cliente=None)
+        return redirect(url_for("ver_clientes", nuevo=1))
 
 
 @app.route("/clientes/importar", methods=["GET", "POST"])
@@ -392,25 +404,25 @@ def editar_cliente_ruta(id):
         notas = request.form["notas"]
         
         if nombre == "" or email == "":
-            flash("Nombre y email son obligatorios.", "error")
-            return redirect(url_for("editar_cliente_ruta", id=id))
+            return redirigir_o_responder_error("Nombre y email son obligatorios.", "editar_cliente_ruta", id=id)
 
         if not email_valido(email):
-            flash("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "error")
-            return redirect(url_for("editar_cliente_ruta", id=id))
+            return redirigir_o_responder_error("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "editar_cliente_ruta", id=id)
 
         otro_cliente = obtener_cliente_por_email(email, session["agencia_id"])
         if otro_cliente and otro_cliente[0] != id:
-            flash(f"Ya existe otro cliente con el email '{email}'.", "error")
-            return redirect(url_for("editar_cliente_ruta", id=id))
+            return redirigir_o_responder_error(f"Ya existe otro cliente con el email '{email}'.", "editar_cliente_ruta", id=id)
 
         editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"])
-        
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Cliente actualizado correctamente.", "exito")
         return redirect(url_for("ver_clientes"))
         
     else:
-        return render_template("cliente_form.html", cliente=cliente)
+        return redirect(url_for("ver_clientes", editar=id))
     
     
         
@@ -468,7 +480,8 @@ def ver_proyectos():
             nombre_cliente = cliente[1]
         por_vencer = proyecto_esta_por_vencer(proyecto[3], proyecto[4])
         lista.append((proyecto, nombre_cliente, por_vencer))
-    return render_template("proyectos.html", proyectos=lista)
+    clientes = obtener_clientes(session["agencia_id"])
+    return render_template("proyectos.html", proyectos=lista, clientes=clientes)
 
 
 @app.route("/proyectos/nuevo",methods=["GET", "POST"])
@@ -481,8 +494,7 @@ def nuevo_proyecto():
         fecha_entrega = request.form["fecha_entrega"]
         
         if titulo == "" or cliente_id == "":
-            flash("Título y cliente son obligatorios.", "error")
-            return redirect(url_for("nuevo_proyecto"))
+            return redirigir_o_responder_error("Título y cliente son obligatorios.", "nuevo_proyecto")
 
         agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
 
@@ -496,12 +508,14 @@ def nuevo_proyecto():
                 except Exception as error:
                     print(f"No se pudo enviar el aviso de Telegram: {error}")
 
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Proyecto agregado correctamente.", "exito")
         return redirect(url_for("ver_proyectos"))
-        
+
     else:
-        clientes = obtener_clientes(session["agencia_id"])
-        return render_template("proyecto_form.html", proyecto=None, clientes=clientes)
+        return redirect(url_for("ver_proyectos", nuevo=1))
     
     
 @app.route("/proyectos/<int:id>")
@@ -563,8 +577,7 @@ def editar_proyecto_ruta(id):
         fecha_entrega = request.form["fecha_entrega"]
 
         if titulo == "" or cliente_id == "":
-            flash("Título y cliente son obligatorios.", "error")
-            return redirect(url_for("editar_proyecto_ruta", id=id))
+            return redirigir_o_responder_error("Título y cliente son obligatorios.", "editar_proyecto_ruta", id=id)
 
         editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
 
@@ -592,12 +605,14 @@ def editar_proyecto_ruta(id):
                     )
                 except Exception as error:
                     print(f"No se pudo enviar el correo: {error}")
-        
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Proyecto actualizado correctamente.", "exito")
         return redirect(url_for("ver_proyectos"))
     else:
-        clientes = obtener_clientes(session["agencia_id"])
-        return render_template("proyecto_form.html", proyecto=proyecto, clientes=clientes)
+        return redirect(url_for("ver_proyectos", editar=id))
         
 @app.route("/proyectos/<int:id>/eliminar", methods=["POST"])
 @login_requerido

@@ -502,6 +502,7 @@ dialog.modal {
     padding: 0;
     border: none;
     background: none;
+    color: var(--color-text);
     width: 90%;
     max-width: 480px;
 }
