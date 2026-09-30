@@ -7,7 +7,7 @@ from flask import Flask, request, render_template, redirect, url_for, session, j
 from functools import wraps
 from core.correo import enviar_correo
 from core.notas import notas_de_cliente
-from core.ia import resumir_notas_cliente, generar_resumen_ejecutivo, generar_sugerencias_proyecto, redactar_nota, redactar_correo
+from core.ia import resumir_notas_cliente, generar_resumen_ejecutivo, generar_sugerencias_proyecto, redactar_nota, redactar_correo, markdown_a_html_seguro
 from datetime import date
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -60,6 +60,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 csrf = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
+# Filtro de plantilla para renderizar el markdown de las respuestas de IA como HTML
+# real (negrita, listas) en vez de texto plano con asteriscos sueltos. La sanitización
+# ocurre dentro de markdown_a_html_seguro, así que en los templates se usa con `| safe`.
+app.jinja_env.filters["markdown"] = markdown_a_html_seguro
 
 def login_requerido(f):
     @wraps(f)

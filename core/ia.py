@@ -1,4 +1,6 @@
 import os
+import markdown as markdown_lib
+import bleach
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from datetime import date
@@ -6,6 +8,19 @@ from datetime import date
 load_dotenv()
 
 cliente_ia = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# Etiquetas HTML que dejamos pasar cuando convertimos el markdown de la IA a HTML.
+# Nada de scripts, links ni imágenes: la IA solo puede enfatizar texto y hacer listas.
+ETIQUETAS_PERMITIDAS = ["p", "strong", "em", "ul", "ol", "li", "br"]
+
+
+def markdown_a_html_seguro(texto):
+    """Convierte texto markdown (que puede venir de una respuesta de IA) a HTML,
+    y lo sanitiza para permitir solo un conjunto reducido de etiquetas seguras.
+    Esto evita que texto de origen semi-controlado (notas escritas por el equipo)
+    termine renderizado como HTML/JS arbitrario si la IA lo repitiera tal cual."""
+    html = markdown_lib.markdown(texto)
+    return bleach.clean(html, tags=ETIQUETAS_PERMITIDAS, attributes={}, strip=True)
 
 
 def resumir_notas_cliente(notas):
@@ -22,7 +37,12 @@ def resumir_notas_cliente(notas):
         messages=[
             {
                 "role": "user",
-                "content": f"Resumí en un párrafo corto, en español, el estado general de este cliente según sus notas:\n\n{texto_notas}"
+                "content": (
+                    "Resumí en un párrafo corto, en español, el estado general de este cliente "
+                    f"según sus notas:\n\n{texto_notas}\n\n"
+                    "Podés usar **negrita** de markdown para destacar lo más importante, pero no "
+                    "uses títulos ni listas: mantenelo en formato de párrafo."
+                )
             }
         ]
     )
@@ -45,7 +65,9 @@ def generar_resumen_ejecutivo(total_clientes, total_proyectos, total_pagos, cobr
         "- Proyectos por estado:\n"
         f"{texto_estado}\n"
         "Redactá un resumen ejecutivo de 2 a 3 oraciones sobre el estado general del negocio, "
-        "en tono profesional pero cercano, sin repetir los números tal cual como una lista."
+        "en tono profesional pero cercano, sin repetir los números tal cual como una lista. "
+        "Podés usar **negrita** de markdown para destacar lo más importante, pero no uses "
+        "títulos ni listas: mantenelo en formato de párrafo."
     )
 
     respuesta = cliente_ia.messages.create(
@@ -91,7 +113,9 @@ def generar_sugerencias_proyecto(proyecto, nombre_cliente, notas, pagos):
         f"{texto_pagos}\n"
         "Basándote en esto, sugerí en 2 a 4 oraciones los próximos pasos a seguir con este "
         "proyecto, y señalá si detectás algún riesgo (por ejemplo, entrega próxima o vencida "
-        "sin pagos registrados, o notas que mencionen algún problema)."
+        "sin pagos registrados, o notas que mencionen algún problema). Podés usar viñetas "
+        "(con guiones) para los próximos pasos y **negrita** de markdown para destacar "
+        "riesgos, pero no uses títulos ni encabezados."
     )
 
     respuesta = cliente_ia.messages.create(

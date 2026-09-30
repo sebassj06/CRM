@@ -1144,6 +1144,10 @@ tbody td:first-child a:hover {
     margin-bottom: 2px;
 }
 
+.tarjeta-ia > .tarjeta-ia-encabezado {
+    margin-bottom: var(--space-4);
+}
+
 .tarjeta-ia-descripcion {
     color: var(--color-text-muted);
     font-size: 0.9rem;
@@ -1157,8 +1161,31 @@ tbody td:first-child a:hover {
 }
 
 .tarjeta-ia-resultado p {
-    margin: 0;
+    margin: 0 0 var(--space-2) 0;
     line-height: 1.6;
+}
+
+.tarjeta-ia-resultado p:last-child {
+    margin-bottom: 0;
+}
+
+.tarjeta-ia-resultado strong {
+    color: var(--color-heading);
+}
+
+.tarjeta-ia-resultado ul,
+.tarjeta-ia-resultado ol {
+    margin: 0;
+    padding-left: var(--space-5);
+}
+
+.tarjeta-ia-resultado li {
+    margin-bottom: var(--space-1);
+    line-height: 1.6;
+}
+
+.tarjeta-ia-resultado li:last-child {
+    margin-bottom: 0;
 }
 
 

@@ -64,22 +64,38 @@
         {% else %}
             <p class="texto-vacio">Este cliente todavía no tiene notas.</p>
         {% endif %}
+    </div>
 
-        <form method="POST" action="/clientes/{{ cliente[0] }}/resumen-ia">
-            <input type="submit" value="Generar resumen con IA" data-cargando="Generando resumen...">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        </form>
+    <div class="tarjeta tarjeta-ia">
+        <div class="tarjeta-ia-fila">
+            <div class="tarjeta-ia-encabezado">
+                {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+                <div>
+                    <h2>Resumen con IA</h2>
+                    <p class="tarjeta-ia-descripcion">Generá un resumen del estado de este cliente según su historial de notas.</p>
+                </div>
+            </div>
+            <form method="POST" action="/clientes/{{ cliente[0] }}/resumen-ia" class="tarjeta-ia-form">
+                <input type="submit" value="Generar resumen" data-cargando="Generando resumen...">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+        </div>
 
         {% if resumen %}
             <div class="tarjeta-ia-resultado">
-                <h3>Resumen generado por IA</h3>
-                <p>{{ resumen }}</p>
+                {{ resumen | markdown | safe }}
             </div>
         {% endif %}
     </div>
 
-    <div class="tarjeta">
-        <h2>Redacción de correo asistida</h2>
+    <div class="tarjeta tarjeta-ia">
+        <div class="tarjeta-ia-encabezado">
+            {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+            <div>
+                <h2>Redacción de correo asistida</h2>
+                <p class="tarjeta-ia-descripcion">Describí de qué se trata y la IA redacta un borrador que podés revisar antes de enviar.</p>
+            </div>
+        </div>
         <form method="POST" action="/clientes/{{ cliente[0] }}/correo-ia/generar">
             <div class="campo">
                 <label for="asunto">Asunto</label>

@@ -45,17 +45,24 @@
         {% endif %}
     </div>
 
-    <div class="tarjeta">
-        <h2>Sugerencias de IA</h2>
-        <form method="POST" action="/proyectos/{{ proyecto[0] }}/sugerencias-ia">
-            <input type="submit" value="Generar sugerencias con IA" data-cargando="Generando sugerencias...">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        </form>
+    <div class="tarjeta tarjeta-ia">
+        <div class="tarjeta-ia-fila">
+            <div class="tarjeta-ia-encabezado">
+                {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+                <div>
+                    <h2>Sugerencias de IA</h2>
+                    <p class="tarjeta-ia-descripcion">Próximos pasos y riesgos detectados a partir de las notas y pagos de este proyecto.</p>
+                </div>
+            </div>
+            <form method="POST" action="/proyectos/{{ proyecto[0] }}/sugerencias-ia" class="tarjeta-ia-form">
+                <input type="submit" value="Generar sugerencias" data-cargando="Generando sugerencias...">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+        </div>
 
         {% if sugerencias %}
             <div class="tarjeta-ia-resultado">
-                <h3>Sugerencias generadas por IA</h3>
-                <p>{{ sugerencias }}</p>
+                {{ sugerencias | markdown | safe }}
             </div>
         {% endif %}
     </div>

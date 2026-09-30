@@ -95,7 +95,7 @@
 
         {% if resumen %}
             <div class="tarjeta-ia-resultado">
-                <p>{{ resumen }}</p>
+                {{ resumen | markdown | safe }}
             </div>
         {% endif %}
     </div>
