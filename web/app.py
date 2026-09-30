@@ -142,7 +142,7 @@ def login():
         return render_template("login.html", error=None)
 
 @app.route("/configuracion", methods=["GET", "POST"])
-@login_requerido
+@admin_requerido
 def configuracion_agencia():
     agencia = obtener_agencia_por_id(session["agencia_id"])
 

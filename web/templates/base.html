@@ -31,8 +31,8 @@
                 <div class="sidebar-grupo-titulo">Sistema</div>
                 {% if rol_actual == 'admin' %}
                     <a href="/usuarios" class="{{ 'activo' if request.path.startswith('/usuarios') else '' }}">{{ icono('usuario') }} Usuarios</a>
+                    <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
                 {% endif %}
-                <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
             </nav>
         </aside>
         <div class="area-principal">
@@ -56,7 +56,9 @@
                                     {% if agencia_actual %}<div class="dropdown-usuario-agencia">{{ agencia_actual }}</div>{% endif %}
                                 </div>
                             </div>
-                            <a href="/configuracion" class="dropdown-usuario-item">{{ icono('configuracion') }} Configuración</a>
+                            {% if rol_actual == 'admin' %}
+                                <a href="/configuracion" class="dropdown-usuario-item">{{ icono('configuracion') }} Configuración</a>
+                            {% endif %}
                             <button type="button" id="boton-tema" class="dropdown-usuario-item dropdown-usuario-boton">{{ icono('apariencia') }} <span id="texto-tema">Modo oscuro</span></button>
                             <div class="dropdown-usuario-separador"></div>
                             <a href="/logout" class="dropdown-usuario-item">{{ icono('cerrar-sesion') }} Cerrar sesión</a>
