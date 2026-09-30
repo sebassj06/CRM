@@ -67,7 +67,8 @@ def crear_tablas():
             id SERIAL PRIMARY KEY,
             nombre_usuario TEXT UNIQUE,
             contraseña_hash TEXT,
-            agencia_id INTEGER)
+            agencia_id INTEGER,
+            rol TEXT DEFAULT 'miembro')
         """)
 
     conexion.commit()

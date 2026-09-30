@@ -29,6 +29,9 @@
                 <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">{{ icono('pagos') }} Pagos</a>
                 <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">{{ icono('notas') }} Notas</a>
                 <div class="sidebar-grupo-titulo">Sistema</div>
+                {% if rol_actual == 'admin' %}
+                    <a href="/usuarios" class="{{ 'activo' if request.path.startswith('/usuarios') else '' }}">{{ icono('usuario') }} Usuarios</a>
+                {% endif %}
                 <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
             </nav>
         </aside>

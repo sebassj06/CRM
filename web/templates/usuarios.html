@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}Usuarios · CRM Agencia{% endblock %}
+
+{% block content %}
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Usuarios</h1>
+            <p class="encabezado-descripcion">Gestioná quién tiene acceso al CRM de tu agencia.</p>
+        </div>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Equipo</h2>
+        {% if usuarios %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                        <tr>
+                            <td data-label="Usuario">
+                                {{ usuario[1] }}
+                                {% if usuario[0] == session.usuario_id %}<span class="texto-secundario">(vos)</span>{% endif %}
+                            </td>
+                            <td data-label="Rol">
+                                <span class="badge {{ 'badge-completado' if usuario[4] == 'admin' else 'badge-pendiente' }}">{{ 'Admin' if usuario[4] == 'admin' else 'Miembro' }}</span>
+                            </td>
+                            <td data-label="Acciones">
+                                {% if usuario[0] != session.usuario_id %}
+                                    <div class="acciones-fila">
+                                        <form method="POST" action="/usuarios/{{ usuario[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar a {{ usuario[1] }}? Esta acción no se puede deshacer.')">
+                                            <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="texto-vacio">Todavía no hay usuarios.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <h2>Agregar usuario</h2>
+        <form method="POST" action="/usuarios">
+            <div class="campo">
+                <label for="nombre_usuario">Nombre de usuario</label>
+                <input type="text" id="nombre_usuario" name="nombre_usuario">
+            </div>
+            <div class="campo">
+                <label for="contraseña">Contraseña</label>
+                <input type="password" id="contraseña" name="contraseña">
+            </div>
+            <div class="campo">
+                <label for="rol">Rol</label>
+                <select id="rol" name="rol">
+                    <option value="miembro">Miembro</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <p class="ayuda-campo">Los administradores pueden agregar y eliminar usuarios. Los miembros tienen el mismo acceso al resto del CRM.</p>
+            </div>
+            <input type="submit" value="Agregar usuario" data-cargando="Agregando...">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+    </div>
+{% endblock %}

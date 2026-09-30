@@ -51,7 +51,14 @@ from core.estadisticas import (
     proyectos_por_estado,
     estadisticas_dashboard
 )
-from core.usuarios import verificar_usuario
+from core.usuarios import (
+    verificar_usuario,
+    crear_usuario,
+    usuarios_de_agencia,
+    obtener_usuario_por_id,
+    contar_admins_agencia,
+    eliminar_usuario_por_id
+)
 from core.agencias import obtener_agencia_por_id, actualizar_configuracion_agencia
 from core.importacion import importar_clientes_desde_archivo, generar_plantilla_clientes
 from avisos_telegram import avisar_proyecto_individual
@@ -74,13 +81,24 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return funcion_decorada
 
+def admin_requerido(f):
+    @wraps(f)
+    def funcion_decorada(*args, **kwargs):
+        if "usuario" not in session:
+            return redirect(url_for("login"))
+        if session.get("rol") != "admin":
+            flash("Esta sección es solo para administradores de la agencia.", "error")
+            return redirect(url_for("inicio"))
+        return f(*args, **kwargs)
+    return funcion_decorada
+
 @app.context_processor
 def inyectar_agencia_actual():
     if "agencia_id" in session:
         agencia = obtener_agencia_por_id(session["agencia_id"])
         if agencia:
-            return {"agencia_actual": agencia[1]}
-    return {"agencia_actual": None}
+            return {"agencia_actual": agencia[1], "rol_actual": session.get("rol")}
+    return {"agencia_actual": None, "rol_actual": None}
 
 @app.route("/")
 @login_requerido
@@ -114,6 +132,11 @@ def login():
 
         session["usuario"] = usuario[1]
         session["agencia_id"] = usuario[3]
+        session["usuario_id"] = usuario[0]
+        # len(usuario) > 4: si todavía no corriste la migración que agrega la
+        # columna 'rol', el login sigue funcionando (con rol 'miembro' por
+        # default) en vez de romperse por un índice que no existe.
+        session["rol"] = usuario[4] if len(usuario) > 4 else "miembro"
         return redirect(url_for("inicio"))
     else:
         return render_template("login.html", error=None)
@@ -136,10 +159,62 @@ def configuracion_agencia():
     return render_template("configuracion.html", agencia=agencia)
 
 
+@app.route("/usuarios", methods=["GET", "POST"])
+@admin_requerido
+def ver_usuarios():
+    if request.method == "POST":
+        nombre_usuario = request.form["nombre_usuario"].strip()
+        contraseña = request.form["contraseña"]
+        rol = request.form["rol"]
+
+        if nombre_usuario == "" or contraseña == "":
+            flash("Nombre de usuario y contraseña son obligatorios.", "error")
+            return redirect(url_for("ver_usuarios"))
+
+        if rol not in ("admin", "miembro"):
+            flash("Rol inválido.", "error")
+            return redirect(url_for("ver_usuarios"))
+
+        try:
+            crear_usuario(nombre_usuario, contraseña, session["agencia_id"], rol)
+            flash("Usuario agregado correctamente.", "exito")
+        except Exception:
+            flash(f"Ya existe un usuario con el nombre '{nombre_usuario}'.", "error")
+
+        return redirect(url_for("ver_usuarios"))
+
+    usuarios = usuarios_de_agencia(session["agencia_id"])
+    return render_template("usuarios.html", usuarios=usuarios)
+
+
+@app.route("/usuarios/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
+def eliminar_usuario_ruta(id):
+    usuario = obtener_usuario_por_id(id, session["agencia_id"])
+
+    if usuario is None:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for("ver_usuarios"))
+
+    if id == session["usuario_id"]:
+        flash("No podés eliminar tu propio usuario.", "error")
+        return redirect(url_for("ver_usuarios"))
+
+    if usuario[4] == "admin" and contar_admins_agencia(session["agencia_id"]) <= 1:
+        flash("No podés eliminar al único administrador de la agencia.", "error")
+        return redirect(url_for("ver_usuarios"))
+
+    eliminar_usuario_por_id(id, session["agencia_id"])
+    flash("Usuario eliminado.", "exito")
+    return redirect(url_for("ver_usuarios"))
+
+
 @app.route("/logout")
 def logout():
     session.pop("usuario", None)
     session.pop("agencia_id", None)
+    session.pop("usuario_id", None)
+    session.pop("rol", None)
     return redirect(url_for("login"))
 
 
