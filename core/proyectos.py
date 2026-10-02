@@ -4,10 +4,12 @@ from datetime import datetime, timedelta
 def agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto) VALUES(%s, %s, %s, %s, %s, %s)",
+    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto) VALUES(%s, %s, %s, %s, %s, %s) RETURNING id",
                    (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto))
+    proyecto_id = cursor.fetchone()[0]
     conexion.commit()
     conexion.close()
+    return proyecto_id
 
 def mostrar_proyectos():
     conexion = obtener_conexion()
@@ -111,6 +113,8 @@ def eliminar_proyecto_por_id(id, agencia_id):
     conexion.close()
 
 def _parsear_fecha(fecha_texto):
+    if not fecha_texto:
+        return None
     for formato in ("%Y-%m-%d", "%d/%m/%Y"):
         try:
             return datetime.strptime(fecha_texto, formato).date()

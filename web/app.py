@@ -23,7 +23,9 @@ from core.clientes import (obtener_clientes,
                            editar_cliente_por_id,
                            eliminar_cliente_por_id,
                            archivar_cliente_por_id,
-                           desarchivar_cliente_por_id
+                           desarchivar_cliente_por_id,
+                           actualizar_etapa_cliente,
+                           ETAPAS_CLIENTE
 )
 from core.paginacion import normalizar_pagina, total_paginas, POR_PAGINA
 from core.proyectos import(
@@ -61,6 +63,51 @@ from core.notas import(
     eliminar_nota_por_id,
     obtener_notas_paginado
 )
+from core.cotizaciones import (
+    ESTADOS_COTIZACION,
+    agregar_cotizacion,
+    obtener_cotizaciones_paginado,
+    obtener_cotizacion_por_id,
+    obtener_cotizacion_por_token,
+    editar_cotizacion_por_id,
+    eliminar_cotizacion_por_id,
+    cambiar_estado_cotizacion,
+    marcar_convertida,
+    reemplazar_items,
+    obtener_items,
+    calcular_totales,
+    cotizacion_esta_vencida
+)
+from core.gastos import (
+    CATEGORIAS_GASTO,
+    agregar_gasto,
+    obtener_gastos_proyecto,
+    obtener_gastos_paginado,
+    obtener_gasto_por_id,
+    editar_gasto_por_id,
+    eliminar_gasto_por_id,
+    total_gastos_proyecto,
+    rentabilidad_cliente
+)
+from core.tareas import (
+    PRIORIDADES,
+    ESTADOS as ESTADOS_TAREA,
+    agregar_tarea,
+    obtener_tareas_proyecto,
+    obtener_tareas,
+    obtener_tareas_paginado,
+    obtener_tarea_por_id,
+    editar_tarea_por_id,
+    eliminar_tarea_por_id,
+    marcar_estado_tarea,
+    tareas_por_vencer,
+    progreso_proyecto,
+    agregar_subtarea,
+    obtener_subtareas,
+    obtener_subtarea_por_id,
+    alternar_subtarea,
+    eliminar_subtarea
+)
 from core.estadisticas import (
     contar_clientes,
     contar_proyectos,
@@ -90,13 +137,14 @@ from core.agencias import obtener_agencia_por_id, actualizar_configuracion_agenc
 from core.importacion import importar_clientes_desde_archivo, generar_plantilla_clientes
 from core.exportacion import exportar_clientes_excel, exportar_proyectos_excel, exportar_pagos_excel, exportar_respaldo_zip
 from core.busqueda import buscar_todo
-from core.recibos import generar_recibo_pdf
+from core.recibos import generar_recibo_pdf, generar_cotizacion_pdf
 from core.auditoria import registrar_auditoria, obtener_auditoria_paginado
 from core.divisas import MONEDAS, obtener_tasa_cambio, simbolo_moneda
 from core.paises import PAISES
 from avisos_telegram import avisar_proyecto_individual
 from werkzeug.utils import secure_filename
 import random
+import secrets
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -107,9 +155,40 @@ CARPETA_FOTOS_PERFIL = os.path.join(app.root_path, "static", "uploads", "perfile
 EXTENSIONES_FOTO_PERMITIDAS = {"png", "jpg", "jpeg", "webp"}
 TAMANO_MAXIMO_FOTO = 3 * 1024 * 1024  # 3 MB
 
+CARPETA_COMPROBANTES = os.path.join(app.root_path, "static", "uploads", "comprobantes")
+EXTENSIONES_COMPROBANTE_PERMITIDAS = {"png", "jpg", "jpeg", "webp", "pdf"}
+TAMANO_MAXIMO_COMPROBANTE = 5 * 1024 * 1024  # 5 MB
+
 
 def extension_foto_valida(nombre_archivo):
     return "." in nombre_archivo and nombre_archivo.rsplit(".", 1)[1].lower() in EXTENSIONES_FOTO_PERMITIDAS
+
+
+def extension_comprobante_valida(nombre_archivo):
+    return "." in nombre_archivo and nombre_archivo.rsplit(".", 1)[1].lower() in EXTENSIONES_COMPROBANTE_PERMITIDAS
+
+
+def guardar_comprobante(archivo):
+    # Devuelve la ruta relativa a 'static/' del comprobante guardado, o None si
+    # no se subió ningún archivo. Lanza ValueError con un mensaje para el
+    # usuario si el archivo no pasa las validaciones.
+    if not archivo or not archivo.filename:
+        return None
+
+    if not extension_comprobante_valida(archivo.filename):
+        raise ValueError("El comprobante debe ser .png, .jpg, .jpeg, .webp o .pdf.")
+
+    archivo.seek(0, os.SEEK_END)
+    tamano = archivo.tell()
+    archivo.seek(0)
+    if tamano > TAMANO_MAXIMO_COMPROBANTE:
+        raise ValueError("El comprobante no puede superar los 5 MB.")
+
+    os.makedirs(CARPETA_COMPROBANTES, exist_ok=True)
+    extension = secure_filename(archivo.filename).rsplit(".", 1)[1].lower()
+    nombre_archivo = f"gasto_{secrets.token_hex(8)}.{extension}"
+    archivo.save(os.path.join(CARPETA_COMPROBANTES, nombre_archivo))
+    return f"uploads/comprobantes/{nombre_archivo}"
 
 # Filtro de plantilla para renderizar el markdown de las respuestas de IA como HTML
 # real (negrita, listas) en vez de texto plano con asteriscos sueltos. La sanitización
@@ -175,9 +254,10 @@ def inyectar_agencia_actual():
                 "rol_actual": session.get("rol"),
                 "notificaciones": notificaciones_proyectos_por_vencer(session["agencia_id"]),
                 "pagos_vencidos": pagos_pendientes_vencidos(session["agencia_id"]),
+                "tareas_vencidas": tareas_por_vencer(session["agencia_id"]),
                 "foto_perfil_actual": usuario_actual[6] if usuario_actual else None
             }
-    return {"agencia_actual": None, "rol_actual": None, "notificaciones": [], "pagos_vencidos": [], "foto_perfil_actual": None}
+    return {"agencia_actual": None, "rol_actual": None, "notificaciones": [], "pagos_vencidos": [], "tareas_vencidas": [], "foto_perfil_actual": None}
 
 
 def notificaciones_proyectos_por_vencer(agencia_id):
@@ -539,7 +619,7 @@ def ver_clientes():
     ver_archivados = request.args.get("archivados") == "1"
     clientes, total = obtener_clientes_paginado(session["agencia_id"], pagina, POR_PAGINA, archivados=ver_archivados)
     return render_template(
-        "clientes.html", clientes=clientes, paises=PAISES, ver_archivados=ver_archivados,
+        "clientes.html", clientes=clientes, paises=PAISES, ver_archivados=ver_archivados, etapas=ETAPAS_CLIENTE,
         pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
     )
 
@@ -554,7 +634,8 @@ def ver_cliente(id):
     else:
         notas = notas_de_cliente(id, session["agencia_id"])
         proyectos = proyectos_de_cliente(id, session["agencia_id"])
-        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None, paises=PAISES)
+        rentabilidad = rentabilidad_cliente(id, session["agencia_id"])
+        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None, paises=PAISES, etapas=ETAPAS_CLIENTE, rentabilidad=rentabilidad)
 
 
 @app.route("/clientes/<int:id>/resumen-ia", methods=["POST"])
@@ -575,7 +656,8 @@ def resumen_ia_cliente(id):
         flash("No se pudo generar el resumen en este momento. Probá de nuevo en un rato.", "error")
         resumen = None
 
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=resumen, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
+    rentabilidad = rentabilidad_cliente(id, session["agencia_id"])
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=resumen, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None, rentabilidad=rentabilidad)
 
 
 @app.route("/clientes/<int:id>/correo-ia/generar", methods=["POST"])
@@ -598,7 +680,8 @@ def generar_correo_ia(id):
 
     notas = notas_de_cliente(id, session["agencia_id"])
     proyectos = proyectos_de_cliente(id, session["agencia_id"])
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=asunto, cuerpo_borrador=cuerpo_borrador, mensaje_envio=None)
+    rentabilidad = rentabilidad_cliente(id, session["agencia_id"])
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=asunto, cuerpo_borrador=cuerpo_borrador, mensaje_envio=None, rentabilidad=rentabilidad)
 
 
 @app.route("/clientes/<int:id>/correo-ia/enviar", methods=["POST"])
@@ -628,7 +711,8 @@ def enviar_correo_ia(id):
 
     notas = notas_de_cliente(id, session["agencia_id"])
     proyectos = proyectos_de_cliente(id, session["agencia_id"])
-    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=mensaje_envio)
+    rentabilidad = rentabilidad_cliente(id, session["agencia_id"])
+    return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=mensaje_envio, rentabilidad=rentabilidad)
 
    
 @app.route("/clientes/nuevo", methods=["GET", "POST"])
@@ -640,7 +724,11 @@ def nuevo_cliente():
         telefono = request.form["telefono"]
         empresa = request.form["empresa"]
         notas = request.form["notas"]
-        
+        etapa = request.form.get("etapa", "Prospecto")
+        if etapa not in ETAPAS_CLIENTE:
+            etapa = "Prospecto"
+        valor_estimado_texto = request.form.get("valor_estimado", "").strip()
+
         if nombre == "" or email == "":
             return redirigir_o_responder_error("Nombre y email son obligatorios.", "nuevo_cliente")
 
@@ -653,7 +741,16 @@ def nuevo_cliente():
         if obtener_cliente_por_email(email, session["agencia_id"]):
             return redirigir_o_responder_error(f"Ya existe un cliente con el email '{email}'.", "nuevo_cliente")
 
-        agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"])
+        valor_estimado = None
+        if valor_estimado_texto:
+            try:
+                valor_estimado = float(valor_estimado_texto)
+            except ValueError:
+                return redirigir_o_responder_error("El valor estimado debe ser un número válido.", "nuevo_cliente")
+            if valor_estimado < 0:
+                return redirigir_o_responder_error("El valor estimado no puede ser negativo.", "nuevo_cliente")
+
+        agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"], etapa=etapa, valor_estimado=valor_estimado)
         auditar("crear", "cliente", None, f"Creó el cliente '{nombre}'.")
 
         if es_peticion_ajax():
@@ -744,7 +841,11 @@ def editar_cliente_ruta(id):
         telefono = request.form["telefono"]
         empresa = request.form["empresa"]
         notas = request.form["notas"]
-        
+        etapa = request.form.get("etapa", "Prospecto")
+        if etapa not in ETAPAS_CLIENTE:
+            etapa = "Prospecto"
+        valor_estimado_texto = request.form.get("valor_estimado", "").strip()
+
         if nombre == "" or email == "":
             return redirigir_o_responder_error("Nombre y email son obligatorios.", "editar_cliente_ruta", id=id)
 
@@ -758,7 +859,16 @@ def editar_cliente_ruta(id):
         if otro_cliente and otro_cliente[0] != id:
             return redirigir_o_responder_error(f"Ya existe otro cliente con el email '{email}'.", "editar_cliente_ruta", id=id)
 
-        editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"])
+        valor_estimado = None
+        if valor_estimado_texto:
+            try:
+                valor_estimado = float(valor_estimado_texto)
+            except ValueError:
+                return redirigir_o_responder_error("El valor estimado debe ser un número válido.", "editar_cliente_ruta", id=id)
+            if valor_estimado < 0:
+                return redirigir_o_responder_error("El valor estimado no puede ser negativo.", "editar_cliente_ruta", id=id)
+
+        editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"], etapa=etapa, valor_estimado=valor_estimado)
         auditar("editar", "cliente", id, f"Editó el cliente '{nombre}'.")
 
         if es_peticion_ajax():
@@ -814,6 +924,281 @@ def desarchivar_cliente_ruta(id):
 
     flash("Cliente restaurado.", "exito")
     return redirect(request.referrer or url_for("ver_clientes"))
+
+
+@app.route("/pipeline")
+@login_requerido
+def ver_pipeline():
+    clientes = obtener_clientes(session["agencia_id"])
+    clientes_por_etapa = {etapa: [] for etapa in ETAPAS_CLIENTE}
+    totales_por_etapa = {etapa: 0 for etapa in ETAPAS_CLIENTE}
+
+    for cliente in clientes:
+        etapa = cliente[9] if cliente[9] in ETAPAS_CLIENTE else "Prospecto"
+        clientes_por_etapa[etapa].append(cliente)
+        totales_por_etapa[etapa] += cliente[10] or 0
+
+    return render_template(
+        "pipeline.html", etapas=ETAPAS_CLIENTE,
+        clientes_por_etapa=clientes_por_etapa, totales_por_etapa=totales_por_etapa
+    )
+
+
+@app.route("/clientes/<int:id>/cambiar-etapa", methods=["POST"])
+@login_requerido
+def cambiar_etapa_cliente_ruta(id):
+    cliente = obtener_cliente_por_id(id, session["agencia_id"])
+    if cliente is None:
+        return jsonify({"exito": False, "error": "Cliente no encontrado."}), 404
+
+    etapa = request.form.get("etapa", "")
+    if etapa not in ETAPAS_CLIENTE:
+        return jsonify({"exito": False, "error": "Etapa inválida."}), 400
+
+    actualizar_etapa_cliente(id, session["agencia_id"], etapa)
+    auditar("editar", "cliente", id, f"Movió a '{cliente[1]}' a la etapa '{etapa}'.")
+    return jsonify({"exito": True})
+
+
+def _parsear_items_cotizacion(form):
+    descripciones = form.getlist("item_descripcion[]")
+    cantidades = form.getlist("item_cantidad[]")
+    precios = form.getlist("item_precio[]")
+    items = []
+    for descripcion, cantidad, precio in zip(descripciones, cantidades, precios):
+        descripcion = descripcion.strip()
+        if not descripcion:
+            continue
+        try:
+            cantidad_val = float(cantidad) if cantidad else 1
+            precio_val = float(precio) if precio else 0
+        except ValueError:
+            raise ValueError("Cantidad y precio de los ítems deben ser números válidos.")
+        items.append((descripcion, cantidad_val, precio_val))
+    return items
+
+
+@app.route("/cotizaciones")
+@login_requerido
+def ver_cotizaciones():
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    cotizaciones, total = obtener_cotizaciones_paginado(session["agencia_id"], pagina, POR_PAGINA)
+    lista = []
+    for cotizacion in cotizaciones:
+        items = obtener_items(cotizacion[0])
+        _, total_cotizacion = calcular_totales(items, cotizacion[4], cotizacion[5])
+        items_json = [[item[2], item[3], item[4]] for item in items]
+        lista.append((cotizacion, total_cotizacion, cotizacion_esta_vencida(cotizacion), items_json))
+    clientes = obtener_clientes(session["agencia_id"])
+    return render_template(
+        "cotizaciones.html", cotizaciones=lista, clientes=clientes,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
+
+
+@app.route("/cotizaciones/nueva", methods=["GET", "POST"])
+@login_requerido
+def nueva_cotizacion():
+    if request.method == "POST":
+        cliente_id = request.form.get("cliente_id", "")
+        titulo = request.form.get("titulo", "").strip()
+        descuento = request.form.get("descuento", "").strip()
+        impuesto = request.form.get("impuesto_porcentaje", "").strip()
+        fecha_vencimiento = request.form.get("fecha_vencimiento", "").strip() or None
+        notas = request.form.get("notas", "").strip() or None
+
+        if cliente_id == "" or titulo == "":
+            return redirigir_o_responder_error("Cliente y título son obligatorios.", "nueva_cotizacion")
+
+        try:
+            descuento_val = float(descuento) if descuento else 0
+            impuesto_val = float(impuesto) if impuesto else 0
+        except ValueError:
+            return redirigir_o_responder_error("Descuento e impuesto deben ser números válidos.", "nueva_cotizacion")
+
+        try:
+            items = _parsear_items_cotizacion(request.form)
+        except ValueError as error:
+            return redirigir_o_responder_error(str(error), "nueva_cotizacion")
+
+        if not items:
+            return redirigir_o_responder_error("Agregá al menos un ítem a la cotización.", "nueva_cotizacion")
+
+        cotizacion_id = agregar_cotizacion(cliente_id, titulo, descuento_val, impuesto_val, fecha_vencimiento, notas, session["agencia_id"])
+        reemplazar_items(cotizacion_id, items)
+        auditar("crear", "cotizacion", cotizacion_id, f"Creó la cotización '{titulo}'.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True, "redirigir_a": url_for("ver_cotizacion", id=cotizacion_id)})
+
+        flash("Cotización creada correctamente.", "exito")
+        return redirect(url_for("ver_cotizacion", id=cotizacion_id))
+    else:
+        return redirect(url_for("ver_cotizaciones", nueva=1))
+
+
+@app.route("/cotizaciones/<int:id>")
+@login_requerido
+def ver_cotizacion(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    if cotizacion is None:
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("ver_cotizaciones"))
+
+    cliente = obtener_cliente_por_id(cotizacion[1], session["agencia_id"])
+    items = obtener_items(id)
+    subtotal, total = calcular_totales(items, cotizacion[4], cotizacion[5])
+    items_json = [[item[2], item[3], item[4]] for item in items]
+    enlace_publico = url_for("ver_cotizacion_publica", token=cotizacion[8], _external=True)
+    clientes = obtener_clientes(session["agencia_id"])
+    return render_template(
+        "cotizacion_detalle.html", cotizacion=cotizacion, cliente=cliente, items=items, items_json=items_json,
+        subtotal=subtotal, total=total, vencida=cotizacion_esta_vencida(cotizacion),
+        enlace_publico=enlace_publico, clientes=clientes
+    )
+
+
+@app.route("/cotizaciones/<int:id>/editar", methods=["GET", "POST"])
+@login_requerido
+def editar_cotizacion_ruta(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    if cotizacion is None:
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("ver_cotizaciones"))
+
+    if request.method == "POST":
+        cliente_id = request.form.get("cliente_id", "")
+        titulo = request.form.get("titulo", "").strip()
+        descuento = request.form.get("descuento", "").strip()
+        impuesto = request.form.get("impuesto_porcentaje", "").strip()
+        fecha_vencimiento = request.form.get("fecha_vencimiento", "").strip() or None
+        notas = request.form.get("notas", "").strip() or None
+
+        if cliente_id == "" or titulo == "":
+            return redirigir_o_responder_error("Cliente y título son obligatorios.", "editar_cotizacion_ruta", id=id)
+
+        try:
+            descuento_val = float(descuento) if descuento else 0
+            impuesto_val = float(impuesto) if impuesto else 0
+        except ValueError:
+            return redirigir_o_responder_error("Descuento e impuesto deben ser números válidos.", "editar_cotizacion_ruta", id=id)
+
+        try:
+            items = _parsear_items_cotizacion(request.form)
+        except ValueError as error:
+            return redirigir_o_responder_error(str(error), "editar_cotizacion_ruta", id=id)
+
+        if not items:
+            return redirigir_o_responder_error("Agregá al menos un ítem a la cotización.", "editar_cotizacion_ruta", id=id)
+
+        editar_cotizacion_por_id(id, cliente_id, titulo, descuento_val, impuesto_val, fecha_vencimiento, notas, session["agencia_id"])
+        reemplazar_items(id, items)
+        auditar("editar", "cotizacion", id, f"Editó la cotización '{titulo}'.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Cotización actualizada correctamente.", "exito")
+        return redirect(url_for("ver_cotizacion", id=id))
+    else:
+        return redirect(url_for("ver_cotizaciones", editar=id))
+
+
+@app.route("/cotizaciones/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
+def eliminar_cotizacion_ruta(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    eliminar_cotizacion_por_id(id, session["agencia_id"])
+    auditar("eliminar", "cotizacion", id, f"Eliminó la cotización '{cotizacion[2] if cotizacion else id}'.")
+    flash("Cotización eliminada.", "exito")
+    return redirect(url_for("ver_cotizaciones"))
+
+
+@app.route("/cotizaciones/<int:id>/marcar-enviada", methods=["POST"])
+@login_requerido
+def marcar_cotizacion_enviada(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    if cotizacion is None:
+        return redirigir_o_responder_error("Cotización no encontrada.", "ver_cotizaciones")
+
+    cambiar_estado_cotizacion(id, "Enviada", session["agencia_id"])
+    auditar("editar", "cotizacion", id, f"Marcó como enviada la cotización '{cotizacion[2]}'.")
+
+    flash("Cotización marcada como enviada. Ya podés compartir el enlace con el cliente.", "exito")
+    return redirect(url_for("ver_cotizacion", id=id))
+
+
+@app.route("/cotizaciones/<int:id>/convertir", methods=["POST"])
+@login_requerido
+def convertir_cotizacion(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    if cotizacion is None:
+        return redirigir_o_responder_error("Cotización no encontrada.", "ver_cotizaciones")
+
+    if cotizacion[3] != "Aceptada":
+        return redirigir_o_responder_error("Solo se puede convertir una cotización aceptada.", "ver_cotizacion", id=id)
+
+    if cotizacion[9]:
+        return redirigir_o_responder_error("Esta cotización ya fue convertida en un proyecto.", "ver_cotizacion", id=id)
+
+    items = obtener_items(id)
+    _, total = calcular_totales(items, cotizacion[4], cotizacion[5])
+    proyecto_id = agregar_proyecto(cotizacion[2], cotizacion[1], "Pendiente", None, session["agencia_id"], total)
+    marcar_convertida(id, proyecto_id, session["agencia_id"])
+    auditar("crear", "proyecto", proyecto_id, f"Convirtió la cotización '{cotizacion[2]}' en un proyecto.")
+
+    flash("Cotización convertida en proyecto.", "exito")
+    return redirect(url_for("ver_proyecto", id=proyecto_id))
+
+
+@app.route("/cotizaciones/<int:id>/pdf")
+@login_requerido
+def cotizacion_pdf(id):
+    cotizacion = obtener_cotizacion_por_id(id, session["agencia_id"])
+    if cotizacion is None:
+        flash("Cotización no encontrada.", "error")
+        return redirect(url_for("ver_cotizaciones"))
+
+    cliente = obtener_cliente_por_id(cotizacion[1], session["agencia_id"])
+    nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+    agencia = obtener_agencia_por_id(session["agencia_id"])
+    items = obtener_items(id)
+    subtotal, total = calcular_totales(items, cotizacion[4], cotizacion[5])
+
+    buffer = generar_cotizacion_pdf(cotizacion, nombre_cliente, agencia[1] if agencia else None, items, subtotal, total)
+    return send_file(buffer, as_attachment=True, download_name=f"cotizacion_{id}.pdf", mimetype="application/pdf")
+
+
+@app.route("/cotizacion/<token>")
+def ver_cotizacion_publica(token):
+    cotizacion = obtener_cotizacion_por_token(token)
+    if cotizacion is None or cotizacion[3] == "Borrador":
+        return render_template("404.html"), 404
+
+    cliente = obtener_cliente_por_id(cotizacion[1], cotizacion[10])
+    agencia = obtener_agencia_por_id(cotizacion[10])
+    items = obtener_items(cotizacion[0])
+    subtotal, total = calcular_totales(items, cotizacion[4], cotizacion[5])
+    return render_template(
+        "cotizacion_publica.html", cotizacion=cotizacion, cliente=cliente, agencia=agencia,
+        items=items, subtotal=subtotal, total=total, vencida=cotizacion_esta_vencida(cotizacion)
+    )
+
+
+@app.route("/cotizacion/<token>/responder", methods=["POST"])
+def responder_cotizacion_publica(token):
+    cotizacion = obtener_cotizacion_por_token(token)
+    if cotizacion is None or cotizacion[3] != "Enviada":
+        flash("Esta cotización ya no está disponible para responder.", "error")
+        return redirect(url_for("ver_cotizacion_publica", token=token))
+
+    respuesta = request.form.get("respuesta")
+    if respuesta not in ("Aceptada", "Rechazada"):
+        flash("Respuesta inválida.", "error")
+        return redirect(url_for("ver_cotizacion_publica", token=token))
+
+    cambiar_estado_cotizacion(cotizacion[0], respuesta)
+    return redirect(url_for("ver_cotizacion_publica", token=token))
 
 
 @app.route("/api/clientes")
@@ -938,10 +1323,20 @@ def ver_proyecto(id):
         clientes = obtener_clientes(session["agencia_id"])
         cobrado_proyecto = sum(pago[2] for pago in pagos if pago[5] == "cobrado")
         saldo_pendiente = proyecto[6] - cobrado_proyecto if proyecto[6] is not None else None
+        tareas = obtener_tareas_proyecto(id, session["agencia_id"])
+        tareas_completadas, tareas_total = progreso_proyecto(id, session["agencia_id"])
+        usuarios = usuarios_de_agencia(session["agencia_id"])
+        usuarios_por_id = {usuario[0]: usuario[1] for usuario in usuarios}
+        gastos = obtener_gastos_proyecto(id, session["agencia_id"])
+        total_gastos = total_gastos_proyecto(id, session["agencia_id"])
+        margen = cobrado_proyecto - total_gastos
         return render_template(
             "proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos,
             sugerencias=None, clientes=clientes, cobrado_proyecto=cobrado_proyecto,
-            saldo_pendiente=saldo_pendiente, **conversion
+            saldo_pendiente=saldo_pendiente, tareas=tareas, tareas_completadas=tareas_completadas,
+            tareas_total=tareas_total, usuarios=usuarios, usuarios_por_id=usuarios_por_id,
+            prioridades=PRIORIDADES, gastos=gastos, total_gastos=total_gastos, margen=margen,
+            categorias_gasto=CATEGORIAS_GASTO, **conversion
         )
     
     
@@ -973,10 +1368,20 @@ def sugerencias_ia_proyecto(id):
     clientes = obtener_clientes(session["agencia_id"])
     cobrado_proyecto = sum(pago[2] for pago in pagos if pago[5] == "cobrado")
     saldo_pendiente = proyecto[6] - cobrado_proyecto if proyecto[6] is not None else None
+    tareas = obtener_tareas_proyecto(id, session["agencia_id"])
+    tareas_completadas, tareas_total = progreso_proyecto(id, session["agencia_id"])
+    usuarios = usuarios_de_agencia(session["agencia_id"])
+    usuarios_por_id = {usuario[0]: usuario[1] for usuario in usuarios}
+    gastos = obtener_gastos_proyecto(id, session["agencia_id"])
+    total_gastos = total_gastos_proyecto(id, session["agencia_id"])
+    margen = cobrado_proyecto - total_gastos
     return render_template(
         "proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos,
         sugerencias=sugerencias, clientes=clientes, cobrado_proyecto=cobrado_proyecto,
-        saldo_pendiente=saldo_pendiente, **conversion
+        saldo_pendiente=saldo_pendiente, tareas=tareas, tareas_completadas=tareas_completadas,
+        tareas_total=tareas_total, usuarios=usuarios, usuarios_por_id=usuarios_por_id,
+        prioridades=PRIORIDADES, gastos=gastos, total_gastos=total_gastos, margen=margen,
+        categorias_gasto=CATEGORIAS_GASTO, **conversion
     )
     
 
@@ -1127,6 +1532,196 @@ def desarchivar_proyecto_ruta(id):
     return redirect(request.referrer or url_for("ver_proyectos"))
 
 
+@app.route("/tareas")
+@login_requerido
+def ver_tareas():
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    ver_todas = request.args.get("todas") == "1"
+    responsable_id = None if ver_todas else session["usuario_id"]
+    tareas, total = obtener_tareas_paginado(session["agencia_id"], pagina, POR_PAGINA, responsable_id=responsable_id)
+    proyectos = obtener_proyectos(session["agencia_id"])
+    usuarios = usuarios_de_agencia(session["agencia_id"])
+    usuarios_por_id = {usuario[0]: usuario[1] for usuario in usuarios}
+    hoy = date.today().isoformat()
+    return render_template(
+        "tareas.html", tareas=tareas, proyectos=proyectos, usuarios=usuarios, usuarios_por_id=usuarios_por_id,
+        ver_todas=ver_todas, prioridades=PRIORIDADES, estados_tarea=ESTADOS_TAREA, hoy=hoy,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
+
+
+@app.route("/tareas/nueva", methods=["GET", "POST"])
+@login_requerido
+def nueva_tarea():
+    if request.method == "POST":
+        proyecto_id = request.form["proyecto_id"]
+        titulo = request.form["titulo"]
+        descripcion = request.form.get("descripcion", "").strip() or None
+        responsable_id = request.form.get("responsable_id") or None
+        prioridad = request.form.get("prioridad", "Media")
+        estado = request.form.get("estado", "Pendiente")
+        fecha_limite = request.form.get("fecha_limite", "").strip() or None
+
+        if proyecto_id == "" or titulo == "":
+            return redirigir_o_responder_error("Proyecto y título son obligatorios.", "nueva_tarea")
+
+        if prioridad not in PRIORIDADES:
+            prioridad = "Media"
+        if estado not in ESTADOS_TAREA:
+            estado = "Pendiente"
+
+        if fecha_limite and fecha_limite < date.today().isoformat():
+            return redirigir_o_responder_error("La fecha límite no puede ser anterior a hoy.", "nueva_tarea")
+
+        agregar_tarea(proyecto_id, titulo, descripcion, responsable_id, prioridad, fecha_limite, session["agencia_id"], estado)
+        auditar("crear", "tarea", None, f"Creó la tarea '{titulo}'.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Tarea agregada correctamente.", "exito")
+        return redirect(url_for("ver_tareas"))
+    else:
+        return redirect(url_for("ver_tareas", nueva=1))
+
+
+@app.route("/tareas/<int:id>")
+@login_requerido
+def ver_tarea(id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        flash("Tarea no encontrada.", "error")
+        return redirect(url_for("ver_tareas"))
+
+    proyecto = obtener_proyecto_por_id(tarea[1], session["agencia_id"])
+    titulo_proyecto = proyecto[1] if proyecto else "Proyecto no encontrado"
+    responsable = obtener_usuario_por_id(tarea[4], session["agencia_id"]) if tarea[4] else None
+    nombre_responsable = responsable[1] if responsable else None
+    subtareas = obtener_subtareas(id)
+    proyectos = obtener_proyectos(session["agencia_id"])
+    usuarios = usuarios_de_agencia(session["agencia_id"])
+    return render_template(
+        "tarea_detalle.html", tarea=tarea, proyecto=proyecto, titulo_proyecto=titulo_proyecto,
+        nombre_responsable=nombre_responsable, subtareas=subtareas, proyectos=proyectos,
+        usuarios=usuarios, prioridades=PRIORIDADES, estados_tarea=ESTADOS_TAREA
+    )
+
+
+@app.route("/tareas/<int:id>/editar", methods=["GET", "POST"])
+@login_requerido
+def editar_tarea_ruta(id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        flash("Tarea no encontrada.", "error")
+        return redirect(url_for("ver_tareas"))
+
+    if request.method == "POST":
+        fecha_limite_anterior = tarea[7]
+
+        proyecto_id = request.form["proyecto_id"]
+        titulo = request.form["titulo"]
+        descripcion = request.form.get("descripcion", "").strip() or None
+        responsable_id = request.form.get("responsable_id") or None
+        prioridad = request.form.get("prioridad", "Media")
+        estado = request.form.get("estado", "Pendiente")
+        fecha_limite = request.form.get("fecha_limite", "").strip() or None
+
+        if proyecto_id == "" or titulo == "":
+            return redirigir_o_responder_error("Proyecto y título son obligatorios.", "editar_tarea_ruta", id=id)
+
+        if prioridad not in PRIORIDADES:
+            prioridad = "Media"
+        if estado not in ESTADOS_TAREA:
+            estado = "Pendiente"
+
+        if fecha_limite and fecha_limite != fecha_limite_anterior and fecha_limite < date.today().isoformat():
+            return redirigir_o_responder_error("La fecha límite no puede ser anterior a hoy.", "editar_tarea_ruta", id=id)
+
+        editar_tarea_por_id(id, proyecto_id, titulo, descripcion, responsable_id, prioridad, estado, fecha_limite, session["agencia_id"])
+        auditar("editar", "tarea", id, f"Editó la tarea '{titulo}'.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Tarea actualizada correctamente.", "exito")
+        return redirect(url_for("ver_tareas"))
+    else:
+        return redirect(url_for("ver_tareas", editar=id))
+
+
+@app.route("/tareas/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
+def eliminar_tarea_ruta(id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    eliminar_tarea_por_id(id, session["agencia_id"])
+    auditar("eliminar", "tarea", id, f"Eliminó la tarea '{tarea[2] if tarea else id}'.")
+    flash("Tarea eliminada.", "exito")
+    return redirect(url_for("ver_tareas"))
+
+
+@app.route("/tareas/<int:id>/marcar-completado", methods=["POST"])
+@login_requerido
+def marcar_tarea_completada_ruta(id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        return redirigir_o_responder_error("Tarea no encontrada.", "ver_tareas")
+
+    if tarea[6] != "Completado":
+        marcar_estado_tarea(id, session["agencia_id"], "Completado")
+        auditar("editar", "tarea", id, f"Marcó como completada la tarea '{tarea[2]}'.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Tarea marcada como completada.", "exito")
+    return redirect(request.referrer or url_for("ver_tareas"))
+
+
+@app.route("/tareas/<int:id>/subtareas/nueva", methods=["POST"])
+@login_requerido
+def nueva_subtarea_ruta(id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        return jsonify({"exito": False, "error": "Tarea no encontrada."}), 404
+
+    texto = request.form.get("texto", "").strip()
+    if texto == "":
+        return jsonify({"exito": False, "error": "El ítem no puede estar vacío."}), 400
+
+    agregar_subtarea(id, texto)
+    return jsonify({"exito": True})
+
+
+@app.route("/tareas/<int:id>/subtareas/<int:sub_id>/alternar", methods=["POST"])
+@login_requerido
+def alternar_subtarea_ruta(id, sub_id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        return jsonify({"exito": False, "error": "Tarea no encontrada."}), 404
+
+    subtarea = obtener_subtarea_por_id(sub_id, id)
+    if subtarea is None:
+        return jsonify({"exito": False, "error": "Ítem no encontrado."}), 404
+
+    alternar_subtarea(sub_id, id)
+    return jsonify({"exito": True})
+
+
+@app.route("/tareas/<int:id>/subtareas/<int:sub_id>/eliminar", methods=["POST"])
+@login_requerido
+def eliminar_subtarea_ruta(id, sub_id):
+    tarea = obtener_tarea_por_id(id, session["agencia_id"])
+    if tarea is None:
+        return jsonify({"exito": False, "error": "Tarea no encontrada."}), 404
+
+    subtarea = obtener_subtarea_por_id(sub_id, id)
+    if subtarea is None:
+        return jsonify({"exito": False, "error": "Ítem no encontrado."}), 404
+
+    eliminar_subtarea(sub_id, id)
+    return jsonify({"exito": True})
+
+
 @app.route("/pagos")
 @login_requerido
 def ver_pagos():
@@ -1219,13 +1814,15 @@ def ver_pago(id):
         return redirect(url_for("ver_pagos"))
     else:
         proyecto = obtener_proyecto_por_id(pago[1], session["agencia_id"])
+        cliente = None
         if proyecto is None:
             titulo_proyecto = "Proyecto no encontrado"
         else:
             titulo_proyecto = proyecto[1]
+            cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
         conversion = datos_conversion(session["agencia_id"])
         proyectos = obtener_proyectos(session["agencia_id"])
-        return render_template("pago_detalle.html", pago=pago, titulo_proyecto=titulo_proyecto, proyectos=proyectos, **conversion)
+        return render_template("pago_detalle.html", pago=pago, proyecto=proyecto, cliente=cliente, titulo_proyecto=titulo_proyecto, proyectos=proyectos, **conversion)
     
 
 @app.route("/pagos/<int:id>/editar", methods=["GET", "POST"])
@@ -1292,6 +1889,136 @@ def marcar_pago_cobrado_ruta(id):
 
     flash("Pago marcado como cobrado.", "exito")
     return redirect(request.referrer or url_for("ver_pagos"))
+
+
+@app.route("/gastos")
+@login_requerido
+def ver_gastos():
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    gastos, total = obtener_gastos_paginado(session["agencia_id"], pagina, POR_PAGINA)
+    proyectos = obtener_proyectos(session["agencia_id"])
+    return render_template(
+        "gastos.html", gastos=gastos, proyectos=proyectos, categorias_gasto=CATEGORIAS_GASTO,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
+
+
+@app.route("/gastos/nuevo", methods=["GET", "POST"])
+@login_requerido
+def nuevo_gasto():
+    if request.method == "POST":
+        proyecto_id = request.form["proyecto_id"]
+        descripcion = request.form.get("descripcion", "").strip()
+        monto = request.form.get("monto", "")
+        categoria = request.form.get("categoria", "Otro")
+        proveedor = request.form.get("proveedor", "").strip() or None
+        fecha = request.form.get("fecha", "").strip() or None
+
+        if proyecto_id == "" or descripcion == "" or monto == "":
+            return redirigir_o_responder_error("Proyecto, descripción y monto son obligatorios.", "nuevo_gasto")
+
+        try:
+            monto = float(monto)
+        except ValueError:
+            return redirigir_o_responder_error("El monto debe ser un número válido.", "nuevo_gasto")
+
+        if monto <= 0:
+            return redirigir_o_responder_error("El monto tiene que ser mayor a 0.", "nuevo_gasto")
+
+        if categoria not in CATEGORIAS_GASTO:
+            categoria = "Otro"
+
+        try:
+            comprobante = guardar_comprobante(request.files.get("comprobante"))
+        except ValueError as error:
+            return redirigir_o_responder_error(str(error), "nuevo_gasto")
+
+        agregar_gasto(proyecto_id, descripcion, monto, categoria, proveedor, fecha, session["agencia_id"], comprobante)
+        auditar("crear", "gasto", None, f"Registró un gasto de ${monto:,.2f} ({descripcion}).")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Gasto agregado correctamente.", "exito")
+        return redirect(url_for("ver_gastos"))
+    else:
+        return redirect(url_for("ver_gastos", nuevo=1))
+
+
+@app.route("/gastos/<int:id>")
+@login_requerido
+def ver_gasto(id):
+    gasto = obtener_gasto_por_id(id, session["agencia_id"])
+    if gasto is None:
+        flash("Gasto no encontrado.", "error")
+        return redirect(url_for("ver_gastos"))
+
+    proyecto = obtener_proyecto_por_id(gasto[1], session["agencia_id"])
+    titulo_proyecto = proyecto[1] if proyecto else "Proyecto no encontrado"
+    cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"]) if proyecto else None
+    proyectos = obtener_proyectos(session["agencia_id"])
+    return render_template(
+        "gasto_detalle.html", gasto=gasto, proyecto=proyecto, titulo_proyecto=titulo_proyecto,
+        cliente=cliente, proyectos=proyectos, categorias_gasto=CATEGORIAS_GASTO
+    )
+
+
+@app.route("/gastos/<int:id>/editar", methods=["GET", "POST"])
+@login_requerido
+def editar_gasto_ruta(id):
+    gasto = obtener_gasto_por_id(id, session["agencia_id"])
+    if gasto is None:
+        flash("Gasto no encontrado.", "error")
+        return redirect(url_for("ver_gastos"))
+
+    if request.method == "POST":
+        proyecto_id = request.form["proyecto_id"]
+        descripcion = request.form.get("descripcion", "").strip()
+        monto = request.form.get("monto", "")
+        categoria = request.form.get("categoria", "Otro")
+        proveedor = request.form.get("proveedor", "").strip() or None
+        fecha = request.form.get("fecha", "").strip() or None
+
+        if proyecto_id == "" or descripcion == "" or monto == "":
+            return redirigir_o_responder_error("Proyecto, descripción y monto son obligatorios.", "editar_gasto_ruta", id=id)
+
+        try:
+            monto = float(monto)
+        except ValueError:
+            return redirigir_o_responder_error("El monto debe ser un número válido.", "editar_gasto_ruta", id=id)
+
+        if monto <= 0:
+            return redirigir_o_responder_error("El monto tiene que ser mayor a 0.", "editar_gasto_ruta", id=id)
+
+        if categoria not in CATEGORIAS_GASTO:
+            categoria = "Otro"
+
+        try:
+            comprobante = guardar_comprobante(request.files.get("comprobante"))
+        except ValueError as error:
+            return redirigir_o_responder_error(str(error), "editar_gasto_ruta", id=id)
+
+        editar_gasto_por_id(id, proyecto_id, descripcion, monto, categoria, proveedor, fecha, session["agencia_id"], comprobante)
+        auditar("editar", "gasto", id, f"Editó el gasto '{descripcion}'.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Gasto actualizado correctamente.", "exito")
+        return redirect(url_for("ver_gastos"))
+    else:
+        return redirect(url_for("ver_gastos", editar=id))
+
+
+@app.route("/gastos/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
+def eliminar_gasto_ruta(id):
+    gasto = obtener_gasto_por_id(id, session["agencia_id"])
+    eliminar_gasto_por_id(id, session["agencia_id"])
+    auditar("eliminar", "gasto", id, f"Eliminó el gasto '{gasto[2] if gasto else id}'.")
+    flash("Gasto eliminado.", "exito")
+    return redirect(url_for("ver_gastos"))
+
 
 @app.route("/notas")
 @login_requerido

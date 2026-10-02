@@ -125,11 +125,12 @@ function inicializarMenusDesplegables() {
     });
 }
 
-function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimpiar) {
+function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimpiar, idFiltroExtra) {
     const input = document.getElementById(idInput);
     const tabla = document.getElementById(idTabla);
     const estadoSinResultados = document.getElementById(idSinResultados);
     const botonLimpiar = document.getElementById(idBotonLimpiar);
+    const filtroExtra = idFiltroExtra ? document.getElementById(idFiltroExtra) : null;
     const paginacion = tabla ? tabla.parentElement.querySelector('.paginacion') : null;
 
     if (!input || !tabla) {
@@ -140,11 +141,14 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
 
     function filtrar() {
         const termino = input.value.trim().toLowerCase();
+        const etapaElegida = filtroExtra ? filtroExtra.value : '';
         let visibles = 0;
 
         filas.forEach(function (fila) {
             const texto = fila.dataset.busqueda || fila.textContent.toLowerCase();
-            const coincide = texto.includes(termino);
+            const coincideTexto = texto.includes(termino);
+            const coincideEtapa = !etapaElegida || fila.dataset.etapa === etapaElegida;
+            const coincide = coincideTexto && coincideEtapa;
             fila.style.display = coincide ? '' : 'none';
             if (coincide) {
                 visibles++;
@@ -159,15 +163,22 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
         // más páginas, la paginación no tiene sentido mientras se busca (para
         // buscar en todos los registros está el buscador global del topbar).
         if (paginacion) {
-            paginacion.hidden = termino !== '';
+            paginacion.hidden = termino !== '' || etapaElegida !== '';
         }
     }
 
     input.addEventListener('input', filtrar);
 
+    if (filtroExtra) {
+        filtroExtra.addEventListener('change', filtrar);
+    }
+
     if (botonLimpiar) {
         botonLimpiar.addEventListener('click', function () {
             input.value = '';
+            if (filtroExtra) {
+                filtroExtra.value = '';
+            }
             filtrar();
             input.focus();
         });
@@ -294,6 +305,12 @@ function inicializarModalCliente() {
         cargarTelefono(boton.dataset.telefono || '');
         formulario.elements['empresa'].value = boton.dataset.empresa || '';
         formulario.elements['notas'].value = boton.dataset.notas || '';
+        if (formulario.elements['etapa']) {
+            formulario.elements['etapa'].value = boton.dataset.etapa || 'Prospecto';
+        }
+        if (formulario.elements['valor_estimado']) {
+            formulario.elements['valor_estimado'].value = boton.dataset.valorEstimado || '';
+        }
         titulo.textContent = 'Editar cliente';
         modal.showModal();
     }
@@ -635,6 +652,601 @@ function inicializarModalPago() {
         url.searchParams.delete('editar');
         window.history.replaceState({}, '', url);
     }
+}
+
+function inicializarModalTarea() {
+    const modal = document.getElementById('modal-tarea');
+    const formulario = document.getElementById('formulario-tarea');
+    const titulo = document.getElementById('modal-tarea-titulo');
+    const contenedorError = document.getElementById('modal-tarea-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function abrirParaNuevo(proyectoIdFijo, redirigirA) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/tareas/nueva';
+        formulario.dataset.redirigirA = redirigirA || '/tareas';
+        if (proyectoIdFijo) {
+            formulario.elements['proyecto_id'].value = proyectoIdFijo;
+        }
+        titulo.textContent = 'Nueva tarea';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/tareas/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || '/tareas';
+        formulario.elements['proyecto_id'].value = boton.dataset.proyectoId || '';
+        formulario.elements['titulo'].value = boton.dataset.titulo || '';
+        formulario.elements['descripcion'].value = boton.dataset.descripcion || '';
+        formulario.elements['responsable_id'].value = boton.dataset.responsableId || '';
+        formulario.elements['prioridad'].value = boton.dataset.prioridad || 'Media';
+        formulario.elements['estado'].value = boton.dataset.estado || 'Pendiente';
+        formulario.elements['fecha_limite'].value = boton.dataset.fechaLimite || '';
+        titulo.textContent = 'Editar tarea';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nueva-tarea').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(null, null);
+        });
+    });
+
+    document.querySelectorAll('.boton-nueva-tarea-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.proyectoId, window.location.pathname);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-tarea').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-tarea');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-tarea');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = formulario.dataset.redirigirA || '/tareas';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la tarea.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nueva')) {
+        abrirParaNuevo(null, null);
+    } else if (parametros.has('editar')) {
+        const botonTarea = document.querySelector(`.boton-editar-tarea[data-id="${parametros.get('editar')}"]`);
+        if (botonTarea) {
+            abrirParaEditar(botonTarea);
+        }
+    }
+
+    if (parametros.has('nueva') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nueva');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarChecklist() {
+    const tarjeta = document.getElementById('tarjeta-checklist');
+    if (!tarjeta) {
+        return;
+    }
+
+    const tareaId = tarjeta.dataset.tareaId;
+    const lista = document.getElementById('lista-checklist');
+    const formulario = document.getElementById('formulario-subtarea');
+    const input = document.getElementById('input-nueva-subtarea');
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    function wirearItem(item) {
+        const checkbox = item.querySelector('.checklist-checkbox');
+        const texto = item.querySelector('.checklist-texto');
+        const botonEliminar = item.querySelector('.boton-eliminar-subtarea');
+
+        checkbox.addEventListener('change', function () {
+            const completada = checkbox.checked;
+            texto.classList.toggle('checklist-texto-completado', completada);
+
+            fetch(`/tareas/${tareaId}/subtareas/${item.dataset.id}/alternar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (!datos.exito) {
+                        checkbox.checked = !completada;
+                        texto.classList.toggle('checklist-texto-completado', !completada);
+                    }
+                })
+                .catch(function () {
+                    checkbox.checked = !completada;
+                    texto.classList.toggle('checklist-texto-completado', !completada);
+                });
+        });
+
+        botonEliminar.addEventListener('click', function () {
+            fetch(`/tareas/${tareaId}/subtareas/${item.dataset.id}/eliminar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (datos.exito) {
+                        item.remove();
+                        if (!lista.querySelector('.checklist-item')) {
+                            const vacio = document.createElement('li');
+                            vacio.className = 'texto-vacio';
+                            vacio.id = 'checklist-vacio';
+                            vacio.textContent = 'Sin ítems todavía. Agregá uno abajo.';
+                            lista.appendChild(vacio);
+                        }
+                    }
+                });
+        });
+    }
+
+    lista.querySelectorAll('.checklist-item').forEach(wirearItem);
+
+    if (formulario) {
+        formulario.addEventListener('submit', function (evento) {
+            evento.preventDefault();
+            const texto = input.value.trim();
+            if (!texto) {
+                return;
+            }
+
+            fetch(`/tareas/${tareaId}/subtareas/nueva`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken, texto: texto })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (datos.exito) {
+                        window.location.reload();
+                    }
+                });
+        });
+    }
+}
+
+function inicializarModalGasto() {
+    const modal = document.getElementById('modal-gasto');
+    const formulario = document.getElementById('formulario-gasto');
+    const titulo = document.getElementById('modal-gasto-titulo');
+    const contenedorError = document.getElementById('modal-gasto-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function abrirParaNuevo(proyectoIdFijo, redirigirA) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/gastos/nuevo';
+        formulario.dataset.redirigirA = redirigirA || '/gastos';
+        if (proyectoIdFijo) {
+            formulario.elements['proyecto_id'].value = proyectoIdFijo;
+        }
+        titulo.textContent = 'Nuevo gasto';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/gastos/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || '/gastos';
+        formulario.elements['proyecto_id'].value = boton.dataset.proyectoId || '';
+        formulario.elements['descripcion'].value = boton.dataset.descripcion || '';
+        formulario.elements['monto'].value = boton.dataset.monto || '';
+        formulario.elements['categoria'].value = boton.dataset.categoria || 'Otro';
+        formulario.elements['proveedor'].value = boton.dataset.proveedor || '';
+        formulario.elements['fecha'].value = boton.dataset.fecha || '';
+        titulo.textContent = 'Editar gasto';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nuevo-gasto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(null, null);
+        });
+    });
+
+    document.querySelectorAll('.boton-nuevo-gasto-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.proyectoId, window.location.pathname);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-gasto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-gasto');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-gasto');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = formulario.dataset.redirigirA || '/gastos';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar el gasto.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nuevo')) {
+        abrirParaNuevo(null, null);
+    } else if (parametros.has('editar')) {
+        const botonGasto = document.querySelector(`.boton-editar-gasto[data-id="${parametros.get('editar')}"]`);
+        if (botonGasto) {
+            abrirParaEditar(botonGasto);
+        }
+    }
+
+    if (parametros.has('nuevo') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nuevo');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarModalCotizacion() {
+    const modal = document.getElementById('modal-cotizacion');
+    const formulario = document.getElementById('formulario-cotizacion');
+    const titulo = document.getElementById('modal-cotizacion-titulo');
+    const contenedorError = document.getElementById('modal-cotizacion-error');
+    const contenedorItems = document.getElementById('filas-items');
+    const plantilla = document.getElementById('plantilla-item-cotizacion');
+    const botonAgregar = document.getElementById('boton-agregar-item');
+
+    if (!modal || !formulario || !plantilla) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function formatearMonto(numero) {
+        const texto = numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return texto.endsWith('.00') ? texto.slice(0, -3) : texto;
+    }
+
+    function recalcular() {
+        let subtotal = 0;
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            const cantidad = parseFloat(fila.querySelector('.cotizacion-item-cantidad').value) || 0;
+            const precio = parseFloat(fila.querySelector('.cotizacion-item-precio').value) || 0;
+            const importe = cantidad * precio;
+            fila.querySelector('.cotizacion-item-importe').textContent = `$${formatearMonto(importe)}`;
+            subtotal += importe;
+        });
+
+        const descuento = parseFloat(formulario.elements['descuento'].value) || 0;
+        const impuesto = parseFloat(formulario.elements['impuesto_porcentaje'].value) || 0;
+        const conDescuento = Math.max(subtotal - descuento, 0);
+        const total = conDescuento * (1 + impuesto / 100);
+
+        document.getElementById('resumen-subtotal').textContent = `$${formatearMonto(subtotal)}`;
+        document.getElementById('resumen-total').textContent = `$${formatearMonto(total)}`;
+    }
+
+    function wirearFila(fila) {
+        fila.querySelectorAll('input').forEach(function (input) {
+            input.addEventListener('input', recalcular);
+        });
+        fila.querySelector('.boton-quitar-item').addEventListener('click', function () {
+            if (contenedorItems.querySelectorAll('.cotizacion-item-fila').length > 1) {
+                fila.remove();
+                recalcular();
+            }
+        });
+    }
+
+    function agregarFila(descripcion, cantidad, precio) {
+        const nodo = plantilla.content.cloneNode(true);
+        contenedorItems.appendChild(nodo);
+        const fila = contenedorItems.lastElementChild;
+        fila.querySelector('input[name="item_descripcion[]"]').value = descripcion || '';
+        fila.querySelector('.cotizacion-item-cantidad').value = (cantidad === undefined || cantidad === null) ? 1 : cantidad;
+        fila.querySelector('.cotizacion-item-precio').value = (precio === undefined || precio === null) ? 0 : precio;
+        wirearFila(fila);
+        return fila;
+    }
+
+    function limpiarItems() {
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            fila.remove();
+        });
+    }
+
+    botonAgregar.addEventListener('click', function () {
+        const fila = agregarFila('', 1, 0);
+        recalcular();
+        fila.querySelector('input[name="item_descripcion[]"]').focus();
+    });
+
+    function abrirParaNuevo() {
+        formulario.reset();
+        ocultarError();
+        limpiarItems();
+        agregarFila('', 1, 0);
+        formulario.action = '/cotizaciones/nueva';
+        formulario.dataset.redirigirA = '';
+        titulo.textContent = 'Nueva cotización';
+        recalcular();
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/cotizaciones/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || `/cotizaciones/${boton.dataset.id}`;
+        formulario.elements['cliente_id'].value = boton.dataset.clienteId || '';
+        formulario.elements['titulo'].value = boton.dataset.titulo || '';
+        formulario.elements['fecha_vencimiento'].value = boton.dataset.fechaVencimiento || '';
+        formulario.elements['descuento'].value = boton.dataset.descuento || 0;
+        formulario.elements['impuesto_porcentaje'].value = boton.dataset.impuesto || 0;
+        formulario.elements['notas'].value = boton.dataset.notas || '';
+
+        limpiarItems();
+        let items = [];
+        try {
+            items = JSON.parse(boton.dataset.items || '[]');
+        } catch (error) {
+            items = [];
+        }
+        if (items.length === 0) {
+            agregarFila('', 1, 0);
+        } else {
+            items.forEach(function (item) {
+                agregarFila(item[0], item[1], item[2]);
+            });
+        }
+
+        titulo.textContent = 'Editar cotización';
+        recalcular();
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nueva-cotizacion').forEach(function (boton) {
+        boton.addEventListener('click', abrirParaNuevo);
+    });
+
+    document.querySelectorAll('.boton-editar-cotizacion').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-cotizacion');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-cotizacion');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = datos.redirigir_a || formulario.dataset.redirigirA || '/cotizaciones';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la cotización.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nueva')) {
+        abrirParaNuevo();
+    } else if (parametros.has('editar')) {
+        const botonCotizacion = document.querySelector(`.boton-editar-cotizacion[data-id="${parametros.get('editar')}"]`);
+        if (botonCotizacion) {
+            abrirParaEditar(botonCotizacion);
+        }
+    }
+
+    if (parametros.has('nueva') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nueva');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarCopiarEnlace() {
+    const boton = document.getElementById('boton-copiar-enlace');
+    const input = document.getElementById('input-enlace-publico');
+    if (!boton || !input) {
+        return;
+    }
+
+    boton.addEventListener('click', function () {
+        input.select();
+        navigator.clipboard.writeText(input.value).then(function () {
+            const textoOriginal = boton.innerHTML;
+            boton.textContent = 'Copiado';
+            setTimeout(function () {
+                boton.innerHTML = textoOriginal;
+            }, 1500);
+        }).catch(function () {
+            // Si el navegador bloquea el portapapeles (ej. sin HTTPS), el texto
+            // queda seleccionado para copiar manualmente con Ctrl+C.
+        });
+    });
 }
 
 function inicializarModalNota() {
@@ -986,6 +1598,115 @@ function inicializarZonaArchivo() {
     });
 }
 
+function inicializarPipeline() {
+    const tablero = document.querySelector('.pipeline-tablero');
+    if (!tablero) {
+        return;
+    }
+
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    function formatearMonto(numero) {
+        const texto = numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return texto.endsWith('.00') ? texto.slice(0, -3) : texto;
+    }
+
+    function columnaDeEtapa(etapa) {
+        let encontrada = null;
+        tablero.querySelectorAll('.pipeline-columna-cuerpo').forEach(function (columna) {
+            if (columna.dataset.etapa === etapa) {
+                encontrada = columna;
+            }
+        });
+        return encontrada;
+    }
+
+    function actualizarColumna(columna) {
+        const tarjetas = columna.querySelectorAll('.pipeline-tarjeta');
+        const columnaCompleta = columna.closest('.pipeline-columna');
+        const contador = columnaCompleta.querySelector('.pipeline-columna-contador');
+        const total = columnaCompleta.querySelector('.pipeline-columna-total');
+
+        contador.textContent = tarjetas.length;
+
+        let suma = 0;
+        tarjetas.forEach(function (tarjeta) {
+            suma += Number(tarjeta.dataset.valor) || 0;
+        });
+        total.textContent = `$${formatearMonto(suma)} estimado`;
+
+        let vacio = columna.querySelector('.pipeline-columna-vacia');
+        if (tarjetas.length === 0 && !vacio) {
+            vacio = document.createElement('p');
+            vacio.className = 'pipeline-columna-vacia';
+            vacio.textContent = 'Sin clientes acá todavía.';
+            columna.appendChild(vacio);
+        } else if (tarjetas.length > 0 && vacio) {
+            vacio.remove();
+        }
+    }
+
+    // Los 3 botones (uno por etapa) ya están en el HTML desde el servidor;
+    // acá solo se oculta el que corresponde a la etapa actual de la tarjeta.
+    function actualizarBotonesVisibles(tarjeta) {
+        tarjeta.querySelectorAll('.pipeline-boton-mover').forEach(function (boton) {
+            boton.hidden = boton.dataset.etapaDestino === tarjeta.dataset.etapa;
+        });
+    }
+
+    function mover(tarjeta, nuevaEtapa) {
+        const columnaOrigen = tarjeta.closest('.pipeline-columna-cuerpo');
+        const columnaDestino = columnaDeEtapa(nuevaEtapa);
+        if (!columnaDestino || columnaDestino === columnaOrigen) {
+            return;
+        }
+
+        const etapaAnterior = tarjeta.dataset.etapa;
+        tarjeta.dataset.etapa = nuevaEtapa;
+        columnaDestino.appendChild(tarjeta);
+        actualizarColumna(columnaOrigen);
+        actualizarColumna(columnaDestino);
+        actualizarBotonesVisibles(tarjeta);
+
+        fetch(`/clientes/${tarjeta.dataset.id}/cambiar-etapa`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ csrf_token: csrfToken, etapa: nuevaEtapa })
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (!datos.exito) {
+                    tarjeta.dataset.etapa = etapaAnterior;
+                    columnaOrigen.appendChild(tarjeta);
+                    actualizarColumna(columnaOrigen);
+                    actualizarColumna(columnaDestino);
+                    actualizarBotonesVisibles(tarjeta);
+                }
+            })
+            .catch(function () {
+                tarjeta.dataset.etapa = etapaAnterior;
+                columnaOrigen.appendChild(tarjeta);
+                actualizarColumna(columnaOrigen);
+                actualizarColumna(columnaDestino);
+                actualizarBotonesVisibles(tarjeta);
+            });
+    }
+
+    tablero.querySelectorAll('.pipeline-tarjeta').forEach(function (tarjeta) {
+        tarjeta.querySelectorAll('.pipeline-boton-mover').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                mover(tarjeta, boton.dataset.etapaDestino);
+            });
+        });
+    });
+}
+
 function inicializarFotoPerfil() {
     const input = document.getElementById('foto_perfil');
     if (!input) {
@@ -1014,10 +1735,12 @@ function inicializarFotoPerfil() {
 }
 
 function inicializarBuscadores() {
-    inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda');
+    inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda', 'filtro-etapa-clientes');
     inicializarBuscadorTabla('buscador-proyectos', 'tabla-proyectos', 'estado-sin-resultados-proyectos', 'boton-limpiar-busqueda-proyectos');
     inicializarBuscadorTabla('buscador-pagos', 'tabla-pagos', 'estado-sin-resultados-pagos', 'boton-limpiar-busqueda-pagos');
     inicializarBuscadorTabla('buscador-notas', 'tabla-notas', 'estado-sin-resultados-notas', 'boton-limpiar-busqueda-notas');
+    inicializarBuscadorTabla('buscador-tareas', 'tabla-tareas', 'estado-sin-resultados-tareas', 'boton-limpiar-busqueda-tareas');
+    inicializarBuscadorTabla('buscador-gastos', 'tabla-gastos', 'estado-sin-resultados-gastos', 'boton-limpiar-busqueda-gastos');
 }
 
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
@@ -1027,10 +1750,16 @@ document.addEventListener('DOMContentLoaded', inicializarMenusDesplegables);
 document.addEventListener('DOMContentLoaded', inicializarBuscadores);
 document.addEventListener('DOMContentLoaded', inicializarZonaArchivo);
 document.addEventListener('DOMContentLoaded', inicializarFotoPerfil);
+document.addEventListener('DOMContentLoaded', inicializarPipeline);
 document.addEventListener('DOMContentLoaded', inicializarModalCliente);
 document.addEventListener('DOMContentLoaded', inicializarModalProyecto);
 document.addEventListener('DOMContentLoaded', inicializarModalPago);
 document.addEventListener('DOMContentLoaded', inicializarModalNota);
+document.addEventListener('DOMContentLoaded', inicializarModalTarea);
+document.addEventListener('DOMContentLoaded', inicializarModalGasto);
+document.addEventListener('DOMContentLoaded', inicializarModalCotizacion);
+document.addEventListener('DOMContentLoaded', inicializarCopiarEnlace);
+document.addEventListener('DOMContentLoaded', inicializarChecklist);
 document.addEventListener('DOMContentLoaded', inicializarModalUsuario);
 document.addEventListener('DOMContentLoaded', inicializarTogglesPassword);
 document.addEventListener('DOMContentLoaded', inicializarConfirmacionEliminar);

@@ -26,8 +26,9 @@ CRM Agencia{% endblock %} {% block content %}
   </div>
 </div>
 
+{% set clases_etapa = {'Prospecto': 'badge-pendiente', 'Negociación': 'badge-progreso', 'Cliente activo': 'badge-completado'} %}
 {% if clientes %}
-<div class="barra-busqueda">
+<div class="barra-busqueda {{ 'barra-busqueda-con-filtro' if not ver_archivados }}">
   {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
   <input
     type="search"
@@ -35,6 +36,14 @@ CRM Agencia{% endblock %} {% block content %}
     placeholder="Buscar por nombre, email o empresa..."
     aria-label="Buscar clientes"
   />
+  {% if not ver_archivados %}
+  <select id="filtro-etapa-clientes" aria-label="Filtrar por etapa">
+    <option value="">Todas las etapas</option>
+    {% for etapa in etapas %}
+    <option value="{{ etapa }}">{{ etapa }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
 </div>
 
 <table id="tabla-clientes">
@@ -44,6 +53,7 @@ CRM Agencia{% endblock %} {% block content %}
       <th>Email</th>
       <th>Teléfono</th>
       <th>Empresa</th>
+      {% if not ver_archivados %}<th>Etapa</th>{% endif %}
       <th>Acciones</th>
     </tr>
   </thead>
@@ -51,6 +61,7 @@ CRM Agencia{% endblock %} {% block content %}
     {% for cliente in clientes %}
     <tr
       data-busqueda="{{ (cliente[1] ~ ' ' ~ cliente[2] ~ ' ' ~ (cliente[4] or ''))|lower }}"
+      data-etapa="{{ cliente[9] }}"
     >
       <td data-label="Cliente">
         <a href="/clientes/{{ cliente[0] }}">{{ cliente[1] }}</a>
@@ -58,6 +69,11 @@ CRM Agencia{% endblock %} {% block content %}
       <td data-label="Email">{{ cliente[2] }}</td>
       <td data-label="Teléfono">{{ cliente[3] if cliente[3] else '—' }}</td>
       <td data-label="Empresa">{{ cliente[4] if cliente[4] else '—' }}</td>
+      {% if not ver_archivados %}
+      <td data-label="Etapa">
+        <span class="badge {{ clases_etapa.get(cliente[9], 'badge-pendiente') }}">{{ cliente[9] }}</span>
+      </td>
+      {% endif %}
       <td data-label="Acciones">
         <div class="acciones-fila">
           {% if ver_archivados %}
@@ -90,6 +106,8 @@ CRM Agencia{% endblock %} {% block content %}
             data-telefono="{{ cliente[3] or '' }}"
             data-empresa="{{ cliente[4] or '' }}"
             data-notas="{{ cliente[5] or '' }}"
+            data-etapa="{{ cliente[9] }}"
+            data-valor-estimado="{{ cliente[10] if cliente[10] is not none else '' }}"
           >
             {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
           </button>
@@ -191,6 +209,18 @@ CRM Agencia{% endblock %} {% block content %}
           name="email"
           placeholder="nombre@dominio.com"
         />
+      </div>
+      <div class="campo">
+        <label for="modal-etapa">Etapa</label>
+        <select id="modal-etapa" name="etapa">
+          {% for etapa in etapas %}
+          <option value="{{ etapa }}">{{ etapa }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="modal-valor-estimado">Valor estimado (opcional)</label>
+        <input type="number" step="0.01" min="0" id="modal-valor-estimado" name="valor_estimado" placeholder="0.00" />
       </div>
       <div class="campo campo-ancho">
         <label for="modal-telefono-numero">Teléfono</label>

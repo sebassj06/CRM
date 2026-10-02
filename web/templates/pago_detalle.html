@@ -5,15 +5,17 @@
 {% block title %}Pago de {{ titulo_proyecto }} · CRM Agencia{% endblock %}
 
 {% block content %}
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+
     <a href="/pagos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a pagos</a>
 
     <div class="encabezado-pagina">
         <div>
-            <h1>${{ pago[2] | monto }}</h1>
+            <div class="pago-monto-fila">
+                <span class="icono-chip icono-chip-pagos">{{ icono('pagos', tamano=19) }}</span>
+                <h1>${{ pago[2] | monto }}</h1>
+            </div>
             {{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}
-            <p class="encabezado-descripcion">
-                <a href="/proyectos/{{ pago[1] }}">{{ titulo_proyecto }}</a>
-            </p>
         </div>
         <div class="encabezado-acciones">
             {% if pago[5] == 'pendiente' %}
@@ -50,9 +52,31 @@
                 {% endif %}
             </dd>
             <dt>Fecha</dt>
-            <dd>{{ pago[3] }}</dd>
+            <dd>{{ pago[3] if pago[3] else '—' }}</dd>
+            <dt>Proyecto</dt>
+            <dd><a href="/proyectos/{{ pago[1] }}" class="enlace-sutil">{{ titulo_proyecto }}</a></dd>
+            <dt>Cliente</dt>
+            <dd>{% if cliente %}<a href="/clientes/{{ cliente[0] }}" class="enlace-sutil">{{ cliente[1] }}</a>{% else %}—{% endif %}</dd>
         </dl>
     </div>
+
+    {% if proyecto %}
+    <div class="tarjeta">
+        <div class="tarjeta-titulo">
+            <span class="icono-chip icono-chip-sm icono-chip-proyectos">{{ icono('proyectos', tamano=15) }}</span>
+            <h2>Proyecto relacionado</h2>
+        </div>
+        <ul class="lista-registros">
+            <li class="registro-item">
+                <div>
+                    <a href="/proyectos/{{ proyecto[0] }}" class="registro-monto">{{ proyecto[1] }}</a>
+                    <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
+                </div>
+                <span class="texto-secundario">Entrega: {{ proyecto[4] if proyecto[4] else '—' }}</span>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
 
     <dialog id="modal-pago" class="modal">
         <form method="POST" id="formulario-pago" class="formulario">

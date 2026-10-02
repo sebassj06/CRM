@@ -80,7 +80,9 @@ def crear_tablas():
             notas TEXT,
             agencia_id INTEGER,
             cliente_desde TEXT,
-            archivado BOOLEAN DEFAULT false)
+            archivado BOOLEAN DEFAULT false,
+            etapa TEXT DEFAULT 'Cliente activo',
+            valor_estimado REAL)
         """)
 
     cursor.execute("""
@@ -132,6 +134,68 @@ def crear_tablas():
             email_nuevo TEXT,
             codigo TEXT,
             creado_en TIMESTAMP DEFAULT NOW())
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tareas (
+            id SERIAL PRIMARY KEY,
+            proyecto_id INTEGER,
+            titulo TEXT,
+            descripcion TEXT,
+            responsable_id INTEGER,
+            prioridad TEXT DEFAULT 'Media',
+            estado TEXT DEFAULT 'Pendiente',
+            fecha_limite TEXT,
+            agencia_id INTEGER,
+            creado_en TIMESTAMP DEFAULT NOW())
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS subtareas (
+            id SERIAL PRIMARY KEY,
+            tarea_id INTEGER,
+            texto TEXT,
+            completada BOOLEAN DEFAULT false,
+            orden INTEGER DEFAULT 0)
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gastos (
+            id SERIAL PRIMARY KEY,
+            proyecto_id INTEGER,
+            descripcion TEXT,
+            monto REAL,
+            categoria TEXT,
+            proveedor TEXT,
+            fecha TEXT,
+            comprobante TEXT,
+            agencia_id INTEGER)
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cotizaciones (
+            id SERIAL PRIMARY KEY,
+            cliente_id INTEGER,
+            titulo TEXT,
+            estado TEXT DEFAULT 'Borrador',
+            descuento REAL DEFAULT 0,
+            impuesto_porcentaje REAL DEFAULT 0,
+            fecha_vencimiento TEXT,
+            notas TEXT,
+            token TEXT UNIQUE,
+            proyecto_id INTEGER,
+            agencia_id INTEGER,
+            creado_en TIMESTAMP DEFAULT NOW())
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cotizacion_items (
+            id SERIAL PRIMARY KEY,
+            cotizacion_id INTEGER,
+            descripcion TEXT,
+            cantidad REAL DEFAULT 1,
+            precio_unitario REAL,
+            orden INTEGER DEFAULT 0)
         """)
 
     cursor.execute("""

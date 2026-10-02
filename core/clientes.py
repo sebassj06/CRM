@@ -32,12 +32,15 @@ def telefono_valido(telefono):
     return len(numero) == longitud_esperada
 
 
-def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None):
+ETAPAS_CLIENTE = ["Prospecto", "Negociación", "Cliente activo"]
+
+
+def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None, etapa="Prospecto", valor_estimado=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute(
-        "INSERT INTO clientes (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde)
+        "INSERT INTO clientes (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado)
     )
     conexion.commit()
     conexion.close()
@@ -80,12 +83,20 @@ def eliminar_cliente_por_id(id, agencia_id):
     conexion.commit()
     conexion.close()
 
-def editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, agencia_id):
+def editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, agencia_id, etapa="Prospecto", valor_estimado=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE clientes SET nombre = %s, email = %s, telefono = %s, empresa = %s, notas = %s WHERE id = %s AND agencia_id = %s",
-                   (nombre, email, telefono, empresa, notas, id, agencia_id)
+    cursor.execute("UPDATE clientes SET nombre = %s, email = %s, telefono = %s, empresa = %s, notas = %s, etapa = %s, valor_estimado = %s WHERE id = %s AND agencia_id = %s",
+                   (nombre, email, telefono, empresa, notas, etapa, valor_estimado, id, agencia_id)
                    )
+    conexion.commit()
+    conexion.close()
+
+
+def actualizar_etapa_cliente(id, agencia_id, etapa):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE clientes SET etapa = %s WHERE id = %s AND agencia_id = %s", (etapa, id, agencia_id))
     conexion.commit()
     conexion.close()
 

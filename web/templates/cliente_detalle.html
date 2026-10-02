@@ -6,12 +6,14 @@
 {% block content %}
     <a href="/clientes" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a clientes</a>
 
+    {% set clases_etapa = {'Prospecto': 'badge-pendiente', 'Negociación': 'badge-progreso', 'Cliente activo': 'badge-completado'} %}
     <div class="encabezado-pagina">
         <div>
             <h1>{{ cliente[1] }}</h1>
             {% if cliente[4] %}<p class="encabezado-descripcion">{{ cliente[4] }}</p>{% endif %}
         </div>
         <div class="encabezado-acciones">
+            <span class="badge {{ clases_etapa.get(cliente[9], 'badge-pendiente') }}">{{ cliente[9] }}</span>
             <button
                 type="button"
                 class="btn btn-secundario boton-editar-cliente"
@@ -21,6 +23,8 @@
                 data-telefono="{{ cliente[3] or '' }}"
                 data-empresa="{{ cliente[4] or '' }}"
                 data-notas="{{ cliente[5] or '' }}"
+                data-etapa="{{ cliente[9] }}"
+                data-valor-estimado="{{ cliente[10] if cliente[10] is not none else '' }}"
                 data-redirigir-a="/clientes/{{ cliente[0] }}"
             >
                 {{ icono('editar', tamano=16) }} Editar cliente
@@ -47,6 +51,26 @@
             <p>{{ cliente[5] }}</p>
         {% endif %}
     </div>
+
+    {% if proyectos %}
+    <div class="tarjeta">
+        <h2>Rentabilidad</h2>
+        <dl>
+            <dt>Cobrado</dt>
+            <dd>${{ rentabilidad[0] | monto }}</dd>
+            <dt>Gastos</dt>
+            <dd>${{ rentabilidad[1] | monto }}</dd>
+            <dt>Margen</dt>
+            <dd>
+                {% if rentabilidad[2] >= 0 %}
+                    <span class="badge badge-completado">${{ rentabilidad[2] | monto }}</span>
+                {% else %}
+                    <span class="badge badge-alta">-${{ (-rentabilidad[2]) | monto }}</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+    {% endif %}
 
     <div class="tarjeta">
         <h2>Proyectos</h2>
@@ -172,6 +196,18 @@
                 <div class="campo">
                     <label for="modal-email">Email</label>
                     <input type="text" inputmode="email" id="modal-email" name="email" placeholder="nombre@dominio.com">
+                </div>
+                <div class="campo">
+                    <label for="modal-etapa">Etapa</label>
+                    <select id="modal-etapa" name="etapa">
+                        {% for etapa in etapas %}
+                        <option value="{{ etapa }}">{{ etapa }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-valor-estimado">Valor estimado (opcional)</label>
+                    <input type="number" step="0.01" min="0" id="modal-valor-estimado" name="valor_estimado" placeholder="0.00">
                 </div>
                 <div class="campo campo-ancho">
                     <label for="modal-telefono-numero">Teléfono</label>

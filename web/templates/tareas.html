@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% from "_paginacion.html" import controles_paginacion %}
+
+{% block title %}Tareas · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_prioridad = {'Baja': 'badge-completado', 'Media': 'badge-progreso', 'Alta': 'badge-alta'} %}
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>{{ 'Todas las tareas' if ver_todas else 'Mis tareas' }}</h1>
+            <p class="encabezado-descripcion">
+                {% if ver_todas %}
+                Todas las tareas de la agencia, de cualquier proyecto.
+                {% else %}
+                Las tareas asignadas a vos en todos los proyectos.
+                {% endif %}
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <button type="button" class="btn btn-primario boton-nueva-tarea">
+                {{ icono('mas', tamano=16) }} Nueva tarea
+            </button>
+            {% if ver_todas %}
+            <a href="/tareas" class="btn btn-secundario">{{ icono('usuario', tamano=16) }} Ver mis tareas</a>
+            {% else %}
+            <a href="/tareas?todas=1" class="btn btn-secundario">{{ icono('lista', tamano=16) }} Ver todas</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if tareas %}
+    <div class="barra-busqueda">
+        {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+        <input type="search" id="buscador-tareas" placeholder="Buscar por título o proyecto..." aria-label="Buscar tareas">
+    </div>
+
+    <table id="tabla-tareas">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Proyecto</th>
+                <th>Responsable</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th>Fecha límite</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tarea in tareas %}
+            {% set vencida = tarea[7] and tarea[7] < hoy and tarea[6] != 'Completado' %}
+            <tr data-busqueda="{{ (tarea[2] ~ ' ' ~ tarea[10])|lower }}">
+                <td data-label="Título">
+                    <a href="/tareas/{{ tarea[0] }}">{{ tarea[2] }}</a>
+                </td>
+                <td data-label="Proyecto">{{ tarea[10] }}</td>
+                <td data-label="Responsable">{{ usuarios_por_id.get(tarea[4], 'Sin asignar') }}</td>
+                <td data-label="Prioridad">
+                    <span class="badge {{ clases_prioridad.get(tarea[5], 'badge-pendiente') }}">{{ tarea[5] }}</span>
+                </td>
+                <td data-label="Estado">
+                    <span class="badge {{ clases_estado.get(tarea[6], 'badge-pendiente') }}">{{ tarea[6] }}</span>
+                </td>
+                <td data-label="Fecha límite">
+                    {{ tarea[7] if tarea[7] else '—' }}
+                    {% if vencida %}<span class="etiqueta-vencida">{{ icono('reloj', tamano=13) }} Vencida</span>{% endif %}
+                </td>
+                <td data-label="Acciones">
+                    <div class="acciones-fila">
+                        {% if tarea[6] != 'Completado' %}
+                        <form method="POST" action="/tareas/{{ tarea[0] }}/marcar-completado" class="form-en-linea">
+                            <button type="submit" class="btn btn-secundario btn-sm btn-icono" data-tooltip="Marcar completada" aria-label="Marcar completada">{{ icono('check-circulo', tamano=15) }}<span class="texto-boton">Marcar completada</span></button>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                        {% endif %}
+                        <button
+                            type="button"
+                            class="btn btn-secundario btn-sm btn-icono boton-editar-tarea"
+                            data-tooltip="Editar"
+                            aria-label="Editar tarea"
+                            data-id="{{ tarea[0] }}"
+                            data-proyecto-id="{{ tarea[1] }}"
+                            data-titulo="{{ tarea[2] }}"
+                            data-descripcion="{{ tarea[3] or '' }}"
+                            data-responsable-id="{{ tarea[4] or '' }}"
+                            data-prioridad="{{ tarea[5] }}"
+                            data-estado="{{ tarea[6] }}"
+                            data-fecha-limite="{{ tarea[7] or '' }}"
+                        >
+                            {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                        </button>
+                        {% if rol_actual == 'admin' %}
+                        <form
+                            method="POST"
+                            action="/tareas/{{ tarea[0] }}/eliminar"
+                            class="form-en-linea form-eliminar"
+                            data-mensaje="¿Eliminar la tarea '{{ tarea[2] }}'? Esta acción no se puede deshacer."
+                        >
+                            <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar tarea">
+                                {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                            </button>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {{ controles_paginacion(pagina, total_paginas, '/tareas') }}
+
+    <div id="estado-sin-resultados-tareas" class="tarjeta estado-vacio" hidden>
+        <h2>No encontramos coincidencias</h2>
+        <p>Probá con otro título o proyecto, o limpiá la búsqueda para ver todas las tareas.</p>
+        <button type="button" id="boton-limpiar-busqueda-tareas" class="btn btn-secundario">Limpiar búsqueda</button>
+    </div>
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>{{ 'No hay tareas todavía' if ver_todas else 'No tenés tareas asignadas' }}</h2>
+        <p>Creá una tarea y asignala a un proyecto para empezar a organizar el trabajo.</p>
+        <button type="button" class="btn btn-primario boton-nueva-tarea">
+            {{ icono('mas', tamano=16) }} Agregar tarea
+        </button>
+    </div>
+    {% endif %}
+
+    <dialog id="modal-tarea" class="modal">
+        <form method="POST" id="formulario-tarea" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('lista', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-tarea-titulo">Nueva tarea</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-tarea" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-tarea-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-titulo-tarea">Título</label>
+                    <input type="text" id="modal-titulo-tarea" name="titulo" placeholder="¿Qué hay que hacer?" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-proyecto_id-tarea">Proyecto</label>
+                    <select id="modal-proyecto_id-tarea" name="proyecto_id">
+                        {% for proyecto in proyectos %}
+                        <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-responsable-tarea">Responsable</label>
+                    <select id="modal-responsable-tarea" name="responsable_id">
+                        <option value="">Sin asignar</option>
+                        {% for usuario in usuarios %}
+                        <option value="{{ usuario[0] }}">{{ usuario[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-prioridad-tarea">Prioridad</label>
+                    <select id="modal-prioridad-tarea" name="prioridad">
+                        {% for prioridad in prioridades %}
+                        <option value="{{ prioridad }}" {{ 'selected' if prioridad == 'Media' }}>{{ prioridad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-estado-tarea">Estado</label>
+                    <select id="modal-estado-tarea" name="estado">
+                        {% for estado in estados_tarea %}
+                        <option value="{{ estado }}">{{ estado }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-limite-tarea">Fecha límite</label>
+                    <input type="date" id="modal-fecha-limite-tarea" name="fecha_limite">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-descripcion-tarea">Descripción (opcional)</label>
+                    <textarea id="modal-descripcion-tarea" name="descripcion" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-tarea" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+{% endblock %}

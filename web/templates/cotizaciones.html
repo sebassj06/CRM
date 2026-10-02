@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% from "_paginacion.html" import controles_paginacion %}
+
+{% block title %}Cotizaciones · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_estado = {'Borrador': 'badge-pendiente', 'Enviada': 'badge-progreso', 'Aceptada': 'badge-completado', 'Rechazada': 'badge-alta'} %}
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Cotizaciones</h1>
+            <p class="encabezado-descripcion">Armá presupuestos, compartí el enlace con el cliente y convertilos en proyecto cuando los acepte.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <button type="button" class="btn btn-primario boton-nueva-cotizacion">{{ icono('mas', tamano=16) }} Nueva cotización</button>
+        </div>
+    </div>
+
+    {% if cotizaciones %}
+    <table id="tabla-cotizaciones">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Válida hasta</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cotizacion, total, vencida, items_json in cotizaciones %}
+            <tr>
+                <td data-label="Título"><a href="/cotizaciones/{{ cotizacion[0] }}">{{ cotizacion[2] }}</a></td>
+                <td data-label="Cliente">{{ cotizacion[12] }}</td>
+                <td data-label="Estado">
+                    <span class="badge {{ clases_estado.get(cotizacion[3], 'badge-pendiente') }}">{{ cotizacion[3] }}</span>
+                    {% if vencida %}<span class="etiqueta-vencida">{{ icono('reloj', tamano=13) }} Vencida</span>{% endif %}
+                </td>
+                <td data-label="Total" class="celda-monto">${{ total | monto }}</td>
+                <td data-label="Válida hasta">{{ cotizacion[6] if cotizacion[6] else '—' }}</td>
+                <td data-label="Acciones">
+                    <div class="acciones-fila">
+                        <button
+                            type="button"
+                            class="btn btn-secundario btn-sm btn-icono boton-editar-cotizacion"
+                            data-tooltip="Editar"
+                            aria-label="Editar cotización"
+                            data-id="{{ cotizacion[0] }}"
+                            data-cliente-id="{{ cotizacion[1] }}"
+                            data-titulo="{{ cotizacion[2] }}"
+                            data-descuento="{{ cotizacion[4] }}"
+                            data-impuesto="{{ cotizacion[5] }}"
+                            data-fecha-vencimiento="{{ cotizacion[6] or '' }}"
+                            data-notas="{{ cotizacion[7] or '' }}"
+                            data-items='{{ items_json | tojson }}'
+                            data-redirigir-a="/cotizaciones/{{ cotizacion[0] }}"
+                        >
+                            {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                        </button>
+                        {% if rol_actual == 'admin' %}
+                        <form
+                            method="POST"
+                            action="/cotizaciones/{{ cotizacion[0] }}/eliminar"
+                            class="form-en-linea form-eliminar"
+                            data-mensaje="¿Eliminar la cotización '{{ cotizacion[2] }}'? Esta acción no se puede deshacer."
+                        >
+                            <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar cotización">
+                                {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                            </button>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {{ controles_paginacion(pagina, total_paginas, '/cotizaciones') }}
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>Aún no tenés cotizaciones</h2>
+        <p>Armá tu primera cotización para empezar a formalizar propuestas con tus clientes.</p>
+        <button type="button" class="btn btn-primario boton-nueva-cotizacion">{{ icono('mas', tamano=16) }} Crear cotización</button>
+    </div>
+    {% endif %}
+
+    {% include "_modal_cotizacion.html" %}
+{% endblock %}

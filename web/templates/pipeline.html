@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}Pipeline · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set iconos_etapa = {'Prospecto': 'usuario', 'Negociación': 'mensaje', 'Cliente activo': 'check-circulo'} %}
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Pipeline</h1>
+            <p class="encabezado-descripcion">Cambiá la etapa de un cliente directamente desde su tarjeta.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <a href="/clientes" class="btn btn-secundario">{{ icono('clientes', tamano=16) }} Ver lista de clientes</a>
+        </div>
+    </div>
+
+    <div class="pipeline-tablero">
+        {% for etapa in etapas %}
+        <div class="pipeline-columna">
+            <div class="pipeline-columna-encabezado">
+                <div class="pipeline-columna-titulo">
+                    <span class="icono-chip icono-chip-sm icono-chip-clientes">{{ icono(iconos_etapa[etapa], tamano=15) }}</span>
+                    <h2>{{ etapa }}</h2>
+                </div>
+                <span class="pipeline-columna-contador">{{ clientes_por_etapa[etapa]|length }}</span>
+            </div>
+            <p class="pipeline-columna-total">${{ totales_por_etapa[etapa] | monto }} estimado</p>
+            <div class="pipeline-columna-cuerpo" data-etapa="{{ etapa }}">
+                {% for cliente in clientes_por_etapa[etapa] %}
+                <div class="pipeline-tarjeta" data-id="{{ cliente[0] }}" data-valor="{{ cliente[10] or 0 }}" data-etapa="{{ etapa }}">
+                    <div class="pipeline-tarjeta-info">
+                        <a href="/clientes/{{ cliente[0] }}" class="pipeline-tarjeta-nombre">{{ cliente[1] }}</a>
+                        {% if cliente[4] %}<div class="texto-secundario">{{ cliente[4] }}</div>{% endif %}
+                        {% if cliente[10] %}<div class="pipeline-tarjeta-valor">${{ cliente[10] | monto }}</div>{% endif %}
+                    </div>
+                    <div class="pipeline-tarjeta-acciones">
+                        {% for opcion in etapas %}
+                        <button
+                            type="button"
+                            class="btn btn-secundario btn-sm btn-icono pipeline-boton-mover"
+                            data-etapa-destino="{{ opcion }}"
+                            data-tooltip="{{ opcion }}"
+                            aria-label="Mover a {{ opcion }}"
+                            {% if opcion == etapa %}hidden{% endif %}
+                        >
+                            {{ icono(iconos_etapa[opcion], tamano=14) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="pipeline-columna-vacia">Sin clientes acá todavía.</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}

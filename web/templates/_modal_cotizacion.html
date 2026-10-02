@@ -1,0 +1,83 @@
+{% from "_iconos.html" import icono %}
+<dialog id="modal-cotizacion" class="modal modal-ancho">
+    <form method="POST" id="formulario-cotizacion" class="formulario">
+        <div class="modal-encabezado">
+            <div class="modal-encabezado-info">
+                <span class="icono-chip icono-chip-clientes">{{ icono('cotizaciones', tamano=19) }}</span>
+                <div>
+                    <h2 id="modal-cotizacion-titulo">Nueva cotización</h2>
+                </div>
+            </div>
+            <button type="button" id="boton-cerrar-modal-cotizacion" class="btn-cerrar-modal" aria-label="Cerrar">
+                {{ icono('cerrar', tamano=18) }}
+            </button>
+        </div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div id="modal-cotizacion-error" class="flash flash-error" role="alert" hidden></div>
+        <div class="modal-campos-grid">
+            <div class="campo campo-ancho">
+                <label for="titulo">Título</label>
+                <input type="text" id="titulo" name="titulo" placeholder="Ej: Rediseño de sitio web" autofocus>
+            </div>
+            <div class="campo">
+                <label for="cliente_id">Cliente</label>
+                <select id="cliente_id" name="cliente_id">
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente[0] }}">{{ cliente[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="campo">
+                <label for="fecha_vencimiento">Válida hasta (opcional)</label>
+                <input type="date" id="fecha_vencimiento" name="fecha_vencimiento">
+            </div>
+        </div>
+
+        <h3 class="cotizacion-seccion-titulo">Ítems</h3>
+        <div id="filas-items" class="cotizacion-items">
+            <div class="cotizacion-item-encabezado">
+                <span>Descripción</span>
+                <span>Cantidad</span>
+                <span>Precio unitario</span>
+                <span>Importe</span>
+                <span></span>
+            </div>
+        </div>
+        <button type="button" id="boton-agregar-item" class="btn btn-secundario btn-sm">{{ icono('mas', tamano=14) }} Agregar ítem</button>
+
+        <div class="cotizacion-totales">
+            <div class="campo">
+                <label for="descuento">Descuento (opcional, monto fijo)</label>
+                <input type="number" step="0.01" min="0" id="descuento" name="descuento" value="0">
+            </div>
+            <div class="campo">
+                <label for="impuesto_porcentaje">Impuesto (opcional, %)</label>
+                <input type="number" step="0.01" min="0" id="impuesto_porcentaje" name="impuesto_porcentaje" value="0">
+            </div>
+            <div class="cotizacion-resumen">
+                <div><span>Subtotal</span><span id="resumen-subtotal">$0.00</span></div>
+                <div><span>Total</span><span id="resumen-total" class="cotizacion-resumen-total">$0.00</span></div>
+            </div>
+        </div>
+
+        <div class="campo campo-ancho">
+            <label for="notas">Notas (opcional)</label>
+            <textarea id="notas" name="notas" rows="3"></textarea>
+        </div>
+
+        <div class="acciones-formulario">
+            <button type="button" id="boton-cancelar-modal-cotizacion" class="btn btn-secundario">Cancelar</button>
+            <input type="submit" value="Guardar" data-cargando="Guardando...">
+        </div>
+    </form>
+</dialog>
+
+<template id="plantilla-item-cotizacion">
+    <div class="cotizacion-item-fila">
+        <input type="text" name="item_descripcion[]" placeholder="Descripción del ítem">
+        <input type="number" step="0.01" min="0" name="item_cantidad[]" class="cotizacion-item-cantidad" value="1">
+        <input type="number" step="0.01" min="0" name="item_precio[]" class="cotizacion-item-precio" value="0">
+        <span class="cotizacion-item-importe">$0.00</span>
+        <button type="button" class="btn btn-secundario btn-sm btn-icono boton-quitar-item" aria-label="Quitar ítem">{{ icono('eliminar', tamano=14) }}</button>
+    </div>
+</template>

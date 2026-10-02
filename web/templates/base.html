@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
         <script>
         if (localStorage.getItem('tema') === 'oscuro') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -25,8 +26,12 @@
                 <div class="sidebar-grupo-titulo">Principal</div>
                 <a href="/" class="{{ 'activo' if request.path == '/' else '' }}">{{ icono('inicio') }} Inicio</a>
                 <a href="/clientes" class="{{ 'activo' if request.path.startswith('/clientes') else '' }}">{{ icono('clientes') }} Clientes</a>
+                <a href="/pipeline" class="{{ 'activo' if request.path.startswith('/pipeline') else '' }}">{{ icono('grafico') }} Pipeline</a>
+                <a href="/cotizaciones" class="{{ 'activo' if request.path.startswith('/cotizacion') else '' }}">{{ icono('cotizaciones') }} Cotizaciones</a>
                 <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">{{ icono('proyectos') }} Proyectos</a>
+                <a href="/tareas" class="{{ 'activo' if request.path.startswith('/tareas') else '' }}">{{ icono('lista') }} Tareas</a>
                 <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">{{ icono('pagos') }} Pagos</a>
+                <a href="/gastos" class="{{ 'activo' if request.path.startswith('/gastos') else '' }}">{{ icono('gastos') }} Gastos</a>
                 <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">{{ icono('notas') }} Notas</a>
                 {% if rol_actual == 'admin' %}
                     <div class="sidebar-grupo-titulo">Sistema</div>
@@ -46,7 +51,7 @@
                     <div class="menu-desplegable menu-notificaciones">
                         <button type="button" id="boton-notificaciones" class="boton-usuario boton-notificaciones" aria-haspopup="true" aria-expanded="false" aria-label="Notificaciones">
                             {{ icono('campana') }}
-                            {% set total_notificaciones = notificaciones|length + pagos_vencidos|length %}
+                            {% set total_notificaciones = notificaciones|length + pagos_vencidos|length + tareas_vencidas|length %}
                             {% if total_notificaciones %}<span class="badge-notificacion">{{ total_notificaciones }}</span>{% endif %}
                         </button>
                         <div class="dropdown-usuario dropdown-notificaciones">
@@ -72,11 +77,22 @@
                                     </a>
                                 {% endfor %}
                             {% endif %}
-                            {% if not notificaciones and not pagos_vencidos %}
+                            {% if tareas_vencidas %}
+                                <div class="dropdown-usuario-encabezado">
+                                    <div class="dropdown-usuario-nombre">Tareas vencidas</div>
+                                </div>
+                                {% for tarea in tareas_vencidas %}
+                                    <a href="/tareas/{{ tarea[0] }}" class="dropdown-usuario-item dropdown-notificacion-item">
+                                        <span class="dropdown-notificacion-titulo">{{ tarea[2] }}</span>
+                                        <span class="texto-secundario">{{ tarea[10] }} · Vencía {{ tarea[7] }}</span>
+                                    </a>
+                                {% endfor %}
+                            {% endif %}
+                            {% if not notificaciones and not pagos_vencidos and not tareas_vencidas %}
                                 <div class="dropdown-usuario-encabezado">
                                     <div class="dropdown-usuario-nombre">Notificaciones</div>
                                 </div>
-                                <p class="dropdown-notificacion-vacio">Estás al día: no hay proyectos por vencer ni pagos pendientes vencidos.</p>
+                                <p class="dropdown-notificacion-vacio">Estás al día: no hay proyectos, pagos ni tareas vencidas.</p>
                             {% endif %}
                         </div>
                     </div>
