@@ -1,11 +1,11 @@
 from core.database import obtener_conexion
 from datetime import datetime, timedelta
 
-def agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, agencia_id):
+def agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id) VALUES(%s, %s, %s, %s, %s)",
-                   (titulo, cliente_id, estado, fecha_entrega, agencia_id))
+    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto) VALUES(%s, %s, %s, %s, %s, %s)",
+                   (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto))
     conexion.commit()
     conexion.close()
 
@@ -21,7 +21,10 @@ def mostrar_proyectos():
 def proyectos_de_cliente(cliente_id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM proyectos WHERE cliente_id = %s AND agencia_id = %s", (cliente_id, agencia_id))
+    cursor.execute(
+        "SELECT * FROM proyectos WHERE cliente_id = %s AND agencia_id = %s AND archivado = false",
+        (cliente_id, agencia_id)
+    )
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
@@ -34,15 +37,18 @@ def obtener_proyectos(agencia_id):
     conexion.close()
     return resultados
 
-def obtener_proyectos_paginado(agencia_id, pagina, por_pagina):
+def obtener_proyectos_paginado(agencia_id, pagina, por_pagina, archivados=False):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT COUNT(*) FROM proyectos WHERE agencia_id = %s", (agencia_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM proyectos WHERE agencia_id = %s AND archivado = %s",
+        (agencia_id, archivados)
+    )
     total = cursor.fetchone()[0]
     offset = (pagina - 1) * por_pagina
     cursor.execute(
-        "SELECT * FROM proyectos WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
-        (agencia_id, por_pagina, offset)
+        "SELECT * FROM proyectos WHERE agencia_id = %s AND archivado = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, archivados, por_pagina, offset)
     )
     resultados = cursor.fetchall()
     conexion.close()
@@ -51,7 +57,10 @@ def obtener_proyectos_paginado(agencia_id, pagina, por_pagina):
 def proyectos_recientes(agencia_id, limite=5):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM proyectos WHERE agencia_id = %s ORDER BY id DESC LIMIT %s", (agencia_id, limite))
+    cursor.execute(
+        "SELECT * FROM proyectos WHERE agencia_id = %s AND archivado = false ORDER BY id DESC LIMIT %s",
+        (agencia_id, limite)
+    )
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
@@ -64,11 +73,11 @@ def obtener_proyecto_por_id(id, agencia_id):
     conexion.close()
     return resultado
 
-def editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, agencia_id):
+def editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE proyectos SET titulo = %s, cliente_id = %s, estado = %s, fecha_entrega = %s WHERE id = %s AND agencia_id = %s",
-                   (titulo, cliente_id, estado, fecha_entrega, id, agencia_id)
+    cursor.execute("UPDATE proyectos SET titulo = %s, cliente_id = %s, estado = %s, fecha_entrega = %s, presupuesto = %s WHERE id = %s AND agencia_id = %s",
+                   (titulo, cliente_id, estado, fecha_entrega, presupuesto, id, agencia_id)
     )
     conexion.commit()
     conexion.close()
@@ -77,6 +86,20 @@ def marcar_proyecto_completado(id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute("UPDATE proyectos SET estado = 'Completado' WHERE id = %s AND agencia_id = %s", (id, agencia_id))
+    conexion.commit()
+    conexion.close()
+
+def archivar_proyecto_por_id(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE proyectos SET archivado = true WHERE id = %s AND agencia_id = %s", (id, agencia_id))
+    conexion.commit()
+    conexion.close()
+
+def desarchivar_proyecto_por_id(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE proyectos SET archivado = false WHERE id = %s AND agencia_id = %s", (id, agencia_id))
     conexion.commit()
     conexion.close()
 
@@ -110,7 +133,10 @@ def proyecto_esta_por_vencer(estado, fecha_entrega, dias=3):
 def proyectos_por_vencer(agencia_id, dias=3):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM proyectos WHERE estado != 'Completado' AND agencia_id = %s", (agencia_id,))
+    cursor.execute(
+        "SELECT * FROM proyectos WHERE estado != 'Completado' AND agencia_id = %s AND archivado = false",
+        (agencia_id,)
+    )
     resultados = cursor.fetchall()
     conexion.close()
 

@@ -3,17 +3,26 @@
 CRM Agencia{% endblock %} {% block content %}
 <div class="encabezado-pagina">
   <div>
-    <h1>Clientes</h1>
+    <h1>{{ 'Clientes archivados' if ver_archivados else 'Clientes' }}</h1>
     <p class="encabezado-descripcion">
+      {% if ver_archivados %}
+      Clientes que sacaste de la vista principal sin perder su historial.
+      {% else %}
       Gestioná la información de contacto y el historial de tus clientes.
+      {% endif %}
     </p>
   </div>
   <div class="encabezado-acciones">
+    {% if ver_archivados %}
+    <a href="/clientes" class="btn btn-secundario">{{ icono('flecha-izquierda', tamano=16) }} Ver activos</a>
+    {% else %}
     <button type="button" class="btn btn-primario boton-nuevo-cliente">
       {{ icono('mas', tamano=16) }} Nuevo cliente
     </button>
     <a href="/clientes/importar" class="btn btn-secundario">Importar CSV</a>
     <a href="/clientes/exportar" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Exportar</a>
+    <a href="/clientes?archivados=1" class="btn btn-secundario">{{ icono('lista', tamano=16) }} Ver archivados</a>
+    {% endif %}
   </div>
 </div>
 
@@ -51,6 +60,25 @@ CRM Agencia{% endblock %} {% block content %}
       <td data-label="Empresa">{{ cliente[4] if cliente[4] else '—' }}</td>
       <td data-label="Acciones">
         <div class="acciones-fila">
+          {% if ver_archivados %}
+          <form method="POST" action="/clientes/{{ cliente[0] }}/desarchivar" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario btn-sm btn-icono" data-tooltip="Desarchivar" aria-label="Desarchivar cliente">{{ icono('repetir', tamano=15) }}<span class="texto-boton">Desarchivar</span></button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          </form>
+          {% if rol_actual == 'admin' %}
+          <form
+            method="POST"
+            action="/clientes/{{ cliente[0] }}/eliminar"
+            class="form-en-linea form-eliminar"
+            data-mensaje="¿Eliminar a {{ cliente[1] }}? Esta acción no se puede deshacer."
+          >
+            <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar cliente">
+              {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+            </button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          </form>
+          {% endif %}
+          {% else %}
           <button
             type="button"
             class="btn btn-secundario btn-sm btn-icono boton-editar-cliente"
@@ -65,6 +93,10 @@ CRM Agencia{% endblock %} {% block content %}
           >
             {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
           </button>
+          <form method="POST" action="/clientes/{{ cliente[0] }}/archivar" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario btn-sm btn-icono" data-tooltip="Archivar" aria-label="Archivar cliente">{{ icono('lista', tamano=15) }}<span class="texto-boton">Archivar</span></button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          </form>
           {% if rol_actual == 'admin' %}
           <form
             method="POST"
@@ -77,6 +109,7 @@ CRM Agencia{% endblock %} {% block content %}
             </button>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           </form>
+          {% endif %}
           {% endif %}
         </div>
       </td>
@@ -99,6 +132,11 @@ CRM Agencia{% endblock %} {% block content %}
 </div>
 {% else %}
 <div class="tarjeta estado-vacio">
+  {% if ver_archivados %}
+  <h2>No tenés clientes archivados</h2>
+  <p>Los clientes que archivés van a aparecer acá.</p>
+  <a href="/clientes" class="btn btn-secundario">{{ icono('flecha-izquierda', tamano=16) }} Ver activos</a>
+  {% else %}
   <h2>Aún no tenés clientes</h2>
   <p>
     Agregá tu primer cliente o importalos desde un archivo CSV/Excel para
@@ -107,6 +145,7 @@ CRM Agencia{% endblock %} {% block content %}
   <button type="button" class="btn btn-primario boton-nuevo-cliente">
     {{ icono('mas', tamano=16) }} Agregar cliente
   </button>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -146,7 +185,8 @@ CRM Agencia{% endblock %} {% block content %}
       <div class="campo">
         <label for="modal-email">Email</label>
         <input
-          type="email"
+          type="text"
+          inputmode="email"
           id="modal-email"
           name="email"
           placeholder="nombre@dominio.com"

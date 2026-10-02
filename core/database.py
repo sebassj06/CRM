@@ -1,12 +1,59 @@
 import os
 import psycopg2
+from psycopg2 import pool as psycopg2_pool
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_pool = None
+
+
+def _obtener_pool():
+    global _pool
+    if _pool is None:
+        _pool = psycopg2_pool.ThreadedConnectionPool(2, 15, os.getenv("DATABASE_URL"))
+    return _pool
+
+
+class _ConexionDelPool:
+    """Envuelve una conexión real tomada del pool para que se comporte
+    exactamente como una conexión de psycopg2 normal (cursor(), commit(),
+    etc.) ante el resto del código. La única diferencia es close(): en vez
+    de cerrar la conexión TCP de verdad, la devuelve al pool para que la
+    reuse la siguiente consulta. Así, los ~70 lugares que ya hacen
+    `conexion = obtener_conexion(); ...; conexion.close()` no necesitan
+    cambiar nada, pero dejan de pagar el costo de abrir una conexión nueva
+    a Postgres (y su handshake) en cada una de las varias consultas que
+    hace cada página — eso era lo que hacía lenta la navegación entre
+    secciones."""
+
+    def __init__(self, conexion, pool):
+        object.__setattr__(self, "_conexion", conexion)
+        object.__setattr__(self, "_pool", pool)
+
+    def __getattr__(self, nombre):
+        return getattr(self._conexion, nombre)
+
+    def close(self):
+        conexion = self._conexion
+        pool = self._pool
+        try:
+            if conexion.closed:
+                pool.putconn(conexion, close=True)
+            else:
+                # Por si quedó una transacción implícita sin commit (lecturas
+                # que nunca escriben no llaman a commit()): la cerramos antes
+                # de devolver la conexión, para que el próximo que la tome
+                # arranque limpio.
+                conexion.rollback()
+                pool.putconn(conexion)
+        except Exception:
+            pool.putconn(conexion, close=True)
+
 
 def obtener_conexion():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    pool = _obtener_pool()
+    return _ConexionDelPool(pool.getconn(), pool)
 
 
 def crear_tablas():
@@ -32,7 +79,8 @@ def crear_tablas():
             empresa TEXT,
             notas TEXT,
             agencia_id INTEGER,
-            cliente_desde TEXT)
+            cliente_desde TEXT,
+            archivado BOOLEAN DEFAULT false)
         """)
 
     cursor.execute("""
@@ -42,7 +90,9 @@ def crear_tablas():
             cliente_id INTEGER,
             estado TEXT,
             fecha_entrega TEXT,
-            agencia_id INTEGER)
+            agencia_id INTEGER,
+            presupuesto REAL,
+            archivado BOOLEAN DEFAULT false)
         """)
 
     cursor.execute("""

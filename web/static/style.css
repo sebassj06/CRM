@@ -1,17 +1,17 @@
 :root {
-  --color-bg: #f4f6f8;
+  --color-bg: #faf9f7;
   --color-surface: #ffffff;
-  --color-primary: #1f2b3d;
-  --color-primary-dark: #141d2b;
-  --color-heading: #1f2b3d;
-  --color-accent: #3b82f6;
-  --color-accent-dark: #2563eb;
-  --color-text: #1f2937;
-  --color-text-muted: #6b7280;
-  --color-border: #e2e5e9;
+  --color-primary: #1c1b1f;
+  --color-primary-dark: #121113;
+  --color-heading: #1c1b1f;
+  --color-accent: #c2410c;
+  --color-accent-dark: #9a3412;
+  --color-text: #2a2724;
+  --color-text-muted: #6b6560;
+  --color-border: #e7e3de;
   --radius: 8px;
   --radius-sm: 4px;
-  --radius-lg: 14px;
+  --radius-lg: 10px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 
   --color-success: #166534;
@@ -22,14 +22,18 @@
   --color-danger: #991b1b;
   --color-danger-bg: rgba(239, 68, 68, 0.14);
 
+  /* Dos tonos para las 4 secciones en vez de un color saturado distinto por
+     cada una: clientes/pagos (lo que mueve plata y relación directa con el
+     cliente) comparten el acento; proyectos/notas (trabajo y seguimiento
+     interno) comparten un verde salvia de apoyo. */
   --color-clientes: var(--color-accent);
-  --color-clientes-bg: rgba(59, 130, 246, 0.14);
-  --color-proyectos: #f59e0b;
-  --color-proyectos-bg: rgba(245, 158, 11, 0.14);
-  --color-pagos: #10b981;
-  --color-pagos-bg: rgba(16, 185, 129, 0.14);
-  --color-notas: #8b5cf6;
-  --color-notas-bg: rgba(139, 92, 246, 0.14);
+  --color-clientes-bg: rgba(194, 65, 12, 0.14);
+  --color-proyectos: #5f7a52;
+  --color-proyectos-bg: rgba(95, 122, 82, 0.16);
+  --color-pagos: var(--color-accent);
+  --color-pagos-bg: rgba(194, 65, 12, 0.14);
+  --color-notas: #5f7a52;
+  --color-notas-bg: rgba(95, 122, 82, 0.16);
 
   --font-size-h1: 1.75rem;
   --font-size-h2: 1.25rem;
@@ -51,17 +55,25 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #0b0b0d;
-  --color-surface: #17171a;
-  --color-text: #e6e6e6;
-  --color-text-muted: #9a9aa0;
-  --color-border: #2c2c31;
-  --color-heading: #f5f5f5;
-  --color-surface-elevated: #212126;
+  --color-bg: #121113;
+  --color-surface: #1c1b1e;
+  --color-text: #ebe8e4;
+  --color-text-muted: #a39d96;
+  --color-border: #302d2a;
+  --color-heading: #f5f3f0;
+  --color-surface-elevated: #242226;
+  --color-accent: #fb923c;
+  --color-accent-dark: #f97316;
   --color-success: #4ade80;
   --color-warning: #f5b551;
   --color-warning-text: #f5b551;
   --color-danger: #f87171;
+  --color-clientes-bg: rgba(251, 146, 60, 0.16);
+  --color-pagos-bg: rgba(251, 146, 60, 0.16);
+  --color-proyectos: #8fae7c;
+  --color-proyectos-bg: rgba(143, 174, 124, 0.16);
+  --color-notas: #8fae7c;
+  --color-notas-bg: rgba(143, 174, 124, 0.16);
 }
 
 * {
@@ -391,15 +403,11 @@ body {
   padding: 13px var(--space-5);
   font-size: 0.98rem;
   border-radius: 999px;
-  background: linear-gradient(
-    135deg,
-    var(--color-accent),
-    var(--color-accent-dark)
-  );
+  background-color: var(--color-accent);
 }
 
 .formulario-publico input[type="submit"]:hover {
-  background: var(--color-accent-dark);
+  background-color: var(--color-accent-dark);
 }
 
 .panel-marca {
@@ -678,38 +686,38 @@ body {
 }
 
 .foto-perfil-selector {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .foto-perfil-preview {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    font-weight: 700;
-    background-color: var(--color-accent);
-    color: #ffffff;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background-color: var(--color-accent);
+  color: #ffffff;
 }
 
 .foto-perfil-selector .ayuda-campo {
-    margin-top: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .formulario-codigo {
-    display: flex;
-    gap: var(--space-2);
-    max-width: 320px;
+  display: flex;
+  gap: var(--space-2);
+  max-width: 320px;
 }
 
 .formulario-codigo input[type="text"] {
-    flex: 1;
+  flex: 1;
 }
 
 .boton-usuario-texto {
@@ -956,7 +964,6 @@ p {
 
 .encabezado-pagina-centrado {
   justify-content: center;
-  text-align: center;
 }
 
 .seccion-config {
@@ -1107,7 +1114,7 @@ dialog.modal::backdrop {
 dialog.modal .formulario {
   max-width: none;
   margin: 0;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   padding: var(--space-6);
   box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.45);
 }
@@ -1120,7 +1127,7 @@ dialog.modal .formulario input[type="number"],
 dialog.modal .formulario input[type="tel"],
 dialog.modal .formulario textarea,
 dialog.modal .formulario select {
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 
 .modal-encabezado {
@@ -1303,21 +1310,13 @@ input[type="submit"] {
 .btn-primario,
 input[type="submit"] {
   background-color: var(--color-accent);
-  background-image: linear-gradient(
-    135deg,
-    var(--color-accent),
-    var(--color-accent-dark)
-  );
   color: white;
+  transition: background-color 0.15s ease;
 }
 
 .btn-primario:hover,
 input[type="submit"]:hover {
-  background-image: linear-gradient(
-    135deg,
-    var(--color-accent-dark),
-    var(--color-accent-dark)
-  );
+  background-color: var(--color-accent-dark);
 }
 
 .btn-secundario {
@@ -1423,7 +1422,7 @@ tbody tr:hover {
 
 tbody td:first-child a {
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-heading);
   text-decoration: none;
 }
@@ -1582,7 +1581,7 @@ code {
 
 .proyecto-titulo {
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-heading);
   text-decoration: none;
 }
@@ -1623,6 +1622,7 @@ code {
 
 .registro-monto {
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-heading);
   text-decoration: none;
 }
@@ -1643,6 +1643,7 @@ a.registro-monto:hover {
 
 .celda-monto {
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-heading);
 }
 
@@ -1762,12 +1763,8 @@ dialog.modal .acciones-formulario input[type="submit"] {
 }
 
 .tarjeta-ia-generador {
-  background-image: linear-gradient(
-    135deg,
-    var(--color-clientes-bg),
-    transparent 70%
-  );
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background-color: var(--color-clientes-bg);
+  border: 1px solid rgba(194, 65, 12, 0.3);
   border-radius: var(--radius);
   padding: var(--space-3);
   margin-bottom: var(--space-4);
@@ -2017,6 +2014,7 @@ a.metrica:hover {
 .metrica-numero {
   font-size: 2rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-heading);
   line-height: 1.1;
 }
@@ -2097,12 +2095,8 @@ a.metrica:hover {
 
 .tarjeta-ia {
   padding: var(--space-4) var(--space-5);
-  background-image: linear-gradient(
-    135deg,
-    var(--color-clientes-bg),
-    transparent 65%
-  );
-  border-color: rgba(59, 130, 246, 0.3);
+  background-color: var(--color-clientes-bg);
+  border-color: rgba(194, 65, 12, 0.3);
 }
 
 .tarjeta-ia-fila {
@@ -2343,5 +2337,16 @@ a.metrica:hover {
 
   .acciones-fila .btn-icono .texto-boton {
     display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

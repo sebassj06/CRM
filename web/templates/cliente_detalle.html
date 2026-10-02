@@ -25,6 +25,12 @@
             >
                 {{ icono('editar', tamano=16) }} Editar cliente
             </button>
+            {% if not cliente[8] %}
+            <form method="POST" action="/clientes/{{ cliente[0] }}/archivar" class="form-en-linea">
+                <button type="submit" class="btn btn-secundario" data-tooltip="Archivar" aria-label="Archivar cliente">{{ icono('lista', tamano=16) }} Archivar</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -165,7 +171,7 @@
                 </div>
                 <div class="campo">
                     <label for="modal-email">Email</label>
-                    <input type="email" id="modal-email" name="email" placeholder="nombre@dominio.com">
+                    <input type="text" inputmode="email" id="modal-email" name="email" placeholder="nombre@dominio.com">
                 </div>
                 <div class="campo campo-ancho">
                     <label for="modal-telefono-numero">Teléfono</label>

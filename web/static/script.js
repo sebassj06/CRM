@@ -444,6 +444,7 @@ function inicializarModalProyecto() {
         const hoy = new Date().toISOString().slice(0, 10);
         formulario.elements['fecha_entrega'].min = fechaExistente && fechaExistente < hoy ? fechaExistente : hoy;
         formulario.elements['fecha_entrega'].value = fechaExistente;
+        formulario.elements['presupuesto'].value = boton.dataset.presupuesto || '';
         titulo.textContent = 'Editar proyecto';
         modal.showModal();
     }

@@ -46,21 +46,37 @@
                     <div class="menu-desplegable menu-notificaciones">
                         <button type="button" id="boton-notificaciones" class="boton-usuario boton-notificaciones" aria-haspopup="true" aria-expanded="false" aria-label="Notificaciones">
                             {{ icono('campana') }}
-                            {% if notificaciones %}<span class="badge-notificacion">{{ notificaciones|length }}</span>{% endif %}
+                            {% set total_notificaciones = notificaciones|length + pagos_vencidos|length %}
+                            {% if total_notificaciones %}<span class="badge-notificacion">{{ total_notificaciones }}</span>{% endif %}
                         </button>
                         <div class="dropdown-usuario dropdown-notificaciones">
-                            <div class="dropdown-usuario-encabezado">
-                                <div class="dropdown-usuario-nombre">Proyectos por vencer</div>
-                            </div>
                             {% if notificaciones %}
+                                <div class="dropdown-usuario-encabezado">
+                                    <div class="dropdown-usuario-nombre">Proyectos por vencer</div>
+                                </div>
                                 {% for proyecto, nombre_cliente in notificaciones %}
                                     <a href="/proyectos/{{ proyecto[0] }}" class="dropdown-usuario-item dropdown-notificacion-item">
                                         <span class="dropdown-notificacion-titulo">{{ proyecto[1] }}</span>
                                         <span class="texto-secundario">{{ nombre_cliente }} · Entrega {{ proyecto[4] }}</span>
                                     </a>
                                 {% endfor %}
-                            {% else %}
-                                <p class="dropdown-notificacion-vacio">No hay proyectos por vencer en los próximos 3 días.</p>
+                            {% endif %}
+                            {% if pagos_vencidos %}
+                                <div class="dropdown-usuario-encabezado">
+                                    <div class="dropdown-usuario-nombre">Pagos pendientes vencidos</div>
+                                </div>
+                                {% for pago in pagos_vencidos %}
+                                    <a href="/pagos/{{ pago[0] }}" class="dropdown-usuario-item dropdown-notificacion-item">
+                                        <span class="dropdown-notificacion-titulo">${{ pago[2] | monto }} · {{ pago[6] }}</span>
+                                        <span class="texto-secundario">Vencía el {{ pago[3] }}</span>
+                                    </a>
+                                {% endfor %}
+                            {% endif %}
+                            {% if not notificaciones and not pagos_vencidos %}
+                                <div class="dropdown-usuario-encabezado">
+                                    <div class="dropdown-usuario-nombre">Notificaciones</div>
+                                </div>
+                                <p class="dropdown-notificacion-vacio">Estás al día: no hay proyectos por vencer ni pagos pendientes vencidos.</p>
                             {% endif %}
                         </div>
                     </div>

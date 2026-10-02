@@ -1,3 +1,4 @@
+from datetime import date
 from core.database import obtener_conexion
 
 def agregar_pago(proyecto_id, monto, fecha, agencia_id, estado="cobrado"):
@@ -60,6 +61,24 @@ def pagos_proximos(agencia_id, desde=None, limite=5):
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
+
+def pagos_pendientes_vencidos(agencia_id):
+    # Pagos "pendiente" cuya fecha ya pasó: plata que se esperaba cobrar y
+    # todavía no se cobró. Alimenta la campanita de notificaciones, igual
+    # que los proyectos por vencer.
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        """SELECT pagos.*, proyectos.titulo FROM pagos
+           JOIN proyectos ON proyectos.id = pagos.proyecto_id
+           WHERE pagos.agencia_id = %s AND pagos.estado = 'pendiente' AND pagos.fecha < %s
+           ORDER BY pagos.fecha ASC""",
+        (agencia_id, date.today().isoformat())
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
 
 def obtener_pago_por_id(id, agencia_id):
     conexion = obtener_conexion()

@@ -92,24 +92,41 @@ def editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, agencia_i
 def obtener_clientes(agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM clientes WHERE agencia_id = %s", (agencia_id,))
+    cursor.execute("SELECT * FROM clientes WHERE agencia_id = %s AND archivado = false", (agencia_id,))
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
 
-def obtener_clientes_paginado(agencia_id, pagina, por_pagina):
+def obtener_clientes_paginado(agencia_id, pagina, por_pagina, archivados=False):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("SELECT COUNT(*) FROM clientes WHERE agencia_id = %s", (agencia_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM clientes WHERE agencia_id = %s AND archivado = %s",
+        (agencia_id, archivados)
+    )
     total = cursor.fetchone()[0]
     offset = (pagina - 1) * por_pagina
     cursor.execute(
-        "SELECT * FROM clientes WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
-        (agencia_id, por_pagina, offset)
+        "SELECT * FROM clientes WHERE agencia_id = %s AND archivado = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, archivados, por_pagina, offset)
     )
     resultados = cursor.fetchall()
     conexion.close()
     return resultados, total
+
+def archivar_cliente_por_id(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE clientes SET archivado = true WHERE id = %s AND agencia_id = %s", (id, agencia_id))
+    conexion.commit()
+    conexion.close()
+
+def desarchivar_cliente_por_id(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE clientes SET archivado = false WHERE id = %s AND agencia_id = %s", (id, agencia_id))
+    conexion.commit()
+    conexion.close()
 
 def obtener_cliente_por_id(id, agencia_id):
     conexion = obtener_conexion()

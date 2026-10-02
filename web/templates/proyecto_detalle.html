@@ -32,10 +32,17 @@
                 data-cliente-id="{{ proyecto[2] }}"
                 data-estado="{{ proyecto[3] }}"
                 data-fecha-entrega="{{ proyecto[4] or '' }}"
+                data-presupuesto="{{ proyecto[6] if proyecto[6] is not none else '' }}"
                 data-redirigir-a="/proyectos/{{ proyecto[0] }}"
             >
                 {{ icono('editar', tamano=16) }} Editar proyecto
             </button>
+            {% if not proyecto[7] %}
+            <form method="POST" action="/proyectos/{{ proyecto[0] }}/archivar" class="form-en-linea">
+                <button type="submit" class="btn btn-secundario" data-tooltip="Archivar" aria-label="Archivar proyecto">{{ icono('lista', tamano=16) }} Archivar</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -44,6 +51,22 @@
         <dl>
             <dt>Fecha de entrega</dt>
             <dd>{{ proyecto[4] if proyecto[4] else '—' }}</dd>
+            {% if proyecto[6] is not none %}
+                <dt>Presupuesto</dt>
+                <dd>${{ proyecto[6] | monto }} {{ monto_convertido(proyecto[6], moneda_actual, simbolo_actual, tasa_cambio) }}</dd>
+                <dt>Cobrado</dt>
+                <dd>${{ cobrado_proyecto | monto }} {{ monto_convertido(cobrado_proyecto, moneda_actual, simbolo_actual, tasa_cambio) }}</dd>
+                <dt>Saldo pendiente</dt>
+                <dd>
+                    {% if saldo_pendiente > 0 %}
+                        <span class="badge badge-pendiente">${{ saldo_pendiente | monto }}</span>
+                    {% elif saldo_pendiente == 0 %}
+                        <span class="badge badge-completado">Cubierto</span>
+                    {% else %}
+                        <span class="badge badge-completado">Cobrado de más (${{ (-saldo_pendiente) | monto }})</span>
+                    {% endif %}
+                </dd>
+            {% endif %}
         </dl>
     </div>
 
@@ -125,9 +148,13 @@
                         <option value="Completado">Completado</option>
                     </select>
                 </div>
-                <div class="campo campo-ancho">
+                <div class="campo">
                     <label for="modal-fecha_entrega">Fecha de entrega</label>
                     <input type="date" id="modal-fecha_entrega" name="fecha_entrega">
+                </div>
+                <div class="campo">
+                    <label for="modal-presupuesto">Presupuesto (opcional)</label>
+                    <input type="number" step="0.01" min="0" id="modal-presupuesto" name="presupuesto" placeholder="0.00">
                 </div>
             </div>
             <div class="acciones-formulario">

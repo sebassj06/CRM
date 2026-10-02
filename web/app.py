@@ -21,7 +21,9 @@ from core.clientes import (obtener_clientes,
                            telefono_valido,
                            agregar_cliente,
                            editar_cliente_por_id,
-                           eliminar_cliente_por_id
+                           eliminar_cliente_por_id,
+                           archivar_cliente_por_id,
+                           desarchivar_cliente_por_id
 )
 from core.paginacion import normalizar_pagina, total_paginas, POR_PAGINA
 from core.proyectos import(
@@ -35,7 +37,9 @@ from core.proyectos import(
     proyectos_recientes,
     proyectos_por_vencer,
     obtener_proyectos_paginado,
-    marcar_proyecto_completado
+    marcar_proyecto_completado,
+    archivar_proyecto_por_id,
+    desarchivar_proyecto_por_id
 )
 from core.pagos import(
     obtener_pagos,
@@ -46,7 +50,8 @@ from core.pagos import(
     pagos_de_proyecto,
     pagos_proximos,
     obtener_pagos_paginado,
-    marcar_pago_cobrado
+    marcar_pago_cobrado,
+    pagos_pendientes_vencidos
 )
 from core.notas import(
     obtener_notas,
@@ -70,6 +75,7 @@ from core.usuarios import (
     crear_usuario,
     usuarios_de_agencia,
     obtener_usuario_por_id,
+    obtener_usuario_por_nombre,
     contar_admins_agencia,
     eliminar_usuario_por_id,
     verificar_password_usuario,
@@ -168,18 +174,26 @@ def inyectar_agencia_actual():
                 "agencia_actual": agencia[1],
                 "rol_actual": session.get("rol"),
                 "notificaciones": notificaciones_proyectos_por_vencer(session["agencia_id"]),
+                "pagos_vencidos": pagos_pendientes_vencidos(session["agencia_id"]),
                 "foto_perfil_actual": usuario_actual[6] if usuario_actual else None
             }
-    return {"agencia_actual": None, "rol_actual": None, "notificaciones": [], "foto_perfil_actual": None}
+    return {"agencia_actual": None, "rol_actual": None, "notificaciones": [], "pagos_vencidos": [], "foto_perfil_actual": None}
 
 
 def notificaciones_proyectos_por_vencer(agencia_id):
-    notificaciones = []
-    for proyecto in proyectos_por_vencer(agencia_id, dias=3):
-        cliente = obtener_cliente_por_id(proyecto[2], agencia_id)
-        nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
-        notificaciones.append((proyecto, nombre_cliente))
-    return notificaciones
+    # Esto corre en TODAS las páginas (va en el context processor, para la
+    # campanita del topbar), así que evitamos una consulta de cliente por
+    # cada proyecto por vencer (N+1) y resolvemos todos los nombres con una
+    # sola consulta de clientes.
+    proyectos = proyectos_por_vencer(agencia_id, dias=3)
+    if not proyectos:
+        return []
+
+    clientes_por_id = {cliente[0]: cliente[1] for cliente in obtener_clientes(agencia_id)}
+    return [
+        (proyecto, clientes_por_id.get(proyecto[2], "Cliente no encontrado"))
+        for proyecto in proyectos
+    ]
 
 def datos_dashboard_extra(agencia_id):
     clases_estado = {"Pendiente": "badge-pendiente", "En progreso": "badge-progreso", "Completado": "badge-completado"}
@@ -283,7 +297,7 @@ def resumen_ejecutivo():
     
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     if request.method == "POST":
         nombre_usuario = request.form["nombre_usuario"]
@@ -398,6 +412,11 @@ def ver_perfil():
         nombre_usuario = request.form.get("nombre_usuario", "").strip()
         if nombre_usuario == "":
             return redirigir_o_responder_error("El nombre de usuario no puede estar vacío.", "ver_perfil")
+
+        if nombre_usuario != usuario[1]:
+            otro_usuario = obtener_usuario_por_nombre(nombre_usuario)
+            if otro_usuario and otro_usuario[0] != session["usuario_id"]:
+                return redirigir_o_responder_error(f"Ya existe un usuario con el nombre '{nombre_usuario}'.", "ver_perfil")
 
         archivo = request.files.get("foto_perfil")
         if archivo and archivo.filename:
@@ -517,9 +536,10 @@ def logout():
 @login_requerido
 def ver_clientes():
     pagina = normalizar_pagina(request.args.get("pagina"))
-    clientes, total = obtener_clientes_paginado(session["agencia_id"], pagina, POR_PAGINA)
+    ver_archivados = request.args.get("archivados") == "1"
+    clientes, total = obtener_clientes_paginado(session["agencia_id"], pagina, POR_PAGINA, archivados=ver_archivados)
     return render_template(
-        "clientes.html", clientes=clientes, paises=PAISES,
+        "clientes.html", clientes=clientes, paises=PAISES, ver_archivados=ver_archivados,
         pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
     )
 
@@ -762,6 +782,40 @@ def eliminar_cliente_ruta(id):
     return redirect(url_for("ver_clientes"))
 
 
+@app.route("/clientes/<int:id>/archivar", methods=["POST"])
+@login_requerido
+def archivar_cliente_ruta(id):
+    cliente = obtener_cliente_por_id(id, session["agencia_id"])
+    if cliente is None:
+        return redirigir_o_responder_error("Cliente no encontrado.", "ver_clientes")
+
+    archivar_cliente_por_id(id, session["agencia_id"])
+    auditar("editar", "cliente", id, f"Archivó al cliente '{cliente[1]}'.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Cliente archivado.", "exito")
+    return redirect(request.referrer or url_for("ver_clientes"))
+
+
+@app.route("/clientes/<int:id>/desarchivar", methods=["POST"])
+@login_requerido
+def desarchivar_cliente_ruta(id):
+    cliente = obtener_cliente_por_id(id, session["agencia_id"])
+    if cliente is None:
+        return redirigir_o_responder_error("Cliente no encontrado.", "ver_clientes")
+
+    desarchivar_cliente_por_id(id, session["agencia_id"])
+    auditar("editar", "cliente", id, f"Desarchivó al cliente '{cliente[1]}'.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Cliente restaurado.", "exito")
+    return redirect(request.referrer or url_for("ver_clientes"))
+
+
 @app.route("/api/clientes")
 @login_requerido
 def api_clientes():
@@ -799,7 +853,8 @@ def api_cliente(id):
 @login_requerido
 def ver_proyectos():
     pagina = normalizar_pagina(request.args.get("pagina"))
-    proyectos, total = obtener_proyectos_paginado(session["agencia_id"], pagina, POR_PAGINA)
+    ver_archivados = request.args.get("archivados") == "1"
+    proyectos, total = obtener_proyectos_paginado(session["agencia_id"], pagina, POR_PAGINA, archivados=ver_archivados)
     lista = []
     for proyecto in proyectos:
         cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
@@ -811,7 +866,7 @@ def ver_proyectos():
         lista.append((proyecto, nombre_cliente, por_vencer))
     clientes = obtener_clientes(session["agencia_id"])
     return render_template(
-        "proyectos.html", proyectos=lista, clientes=clientes,
+        "proyectos.html", proyectos=lista, clientes=clientes, ver_archivados=ver_archivados,
         pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
     )
 
@@ -824,14 +879,24 @@ def nuevo_proyecto():
         cliente_id = request.form["cliente_id"]
         estado = request.form["estado"]
         fecha_entrega = request.form["fecha_entrega"]
-        
+        presupuesto_texto = request.form.get("presupuesto", "").strip()
+
         if titulo == "" or cliente_id == "":
             return redirigir_o_responder_error("Título y cliente son obligatorios.", "nuevo_proyecto")
 
         if fecha_entrega and fecha_entrega < date.today().isoformat():
             return redirigir_o_responder_error("La fecha de entrega no puede ser anterior a hoy.", "nuevo_proyecto")
 
-        agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
+        presupuesto = None
+        if presupuesto_texto:
+            try:
+                presupuesto = float(presupuesto_texto)
+            except ValueError:
+                return redirigir_o_responder_error("El presupuesto debe ser un número válido.", "nuevo_proyecto")
+            if presupuesto < 0:
+                return redirigir_o_responder_error("El presupuesto no puede ser negativo.", "nuevo_proyecto")
+
+        agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"], presupuesto)
         auditar("crear", "proyecto", None, f"Creó el proyecto '{titulo}'.")
 
         if proyecto_esta_por_vencer(estado, fecha_entrega):
@@ -871,7 +936,13 @@ def ver_proyecto(id):
         pagos = pagos_de_proyecto(id, session["agencia_id"])
         conversion = datos_conversion(session["agencia_id"])
         clientes = obtener_clientes(session["agencia_id"])
-        return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=None, clientes=clientes, **conversion)
+        cobrado_proyecto = sum(pago[2] for pago in pagos if pago[5] == "cobrado")
+        saldo_pendiente = proyecto[6] - cobrado_proyecto if proyecto[6] is not None else None
+        return render_template(
+            "proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos,
+            sugerencias=None, clientes=clientes, cobrado_proyecto=cobrado_proyecto,
+            saldo_pendiente=saldo_pendiente, **conversion
+        )
     
     
 @app.route("/proyectos/<int:id>/sugerencias-ia", methods=["POST"])
@@ -900,7 +971,13 @@ def sugerencias_ia_proyecto(id):
         sugerencias = None
 
     clientes = obtener_clientes(session["agencia_id"])
-    return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=sugerencias, clientes=clientes, **conversion)
+    cobrado_proyecto = sum(pago[2] for pago in pagos if pago[5] == "cobrado")
+    saldo_pendiente = proyecto[6] - cobrado_proyecto if proyecto[6] is not None else None
+    return render_template(
+        "proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos,
+        sugerencias=sugerencias, clientes=clientes, cobrado_proyecto=cobrado_proyecto,
+        saldo_pendiente=saldo_pendiente, **conversion
+    )
     
 
 @app.route("/proyectos/<int:id>/editar", methods=["GET", "POST"])
@@ -920,6 +997,7 @@ def editar_proyecto_ruta(id):
         cliente_id = request.form["cliente_id"]
         estado = request.form["estado"]
         fecha_entrega = request.form["fecha_entrega"]
+        presupuesto_texto = request.form.get("presupuesto", "").strip()
 
         if titulo == "" or cliente_id == "":
             return redirigir_o_responder_error("Título y cliente son obligatorios.", "editar_proyecto_ruta", id=id)
@@ -927,7 +1005,16 @@ def editar_proyecto_ruta(id):
         if fecha_entrega and fecha_entrega != fecha_entrega_anterior and fecha_entrega < date.today().isoformat():
             return redirigir_o_responder_error("La fecha de entrega no puede ser anterior a hoy.", "editar_proyecto_ruta", id=id)
 
-        editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
+        presupuesto = None
+        if presupuesto_texto:
+            try:
+                presupuesto = float(presupuesto_texto)
+            except ValueError:
+                return redirigir_o_responder_error("El presupuesto debe ser un número válido.", "editar_proyecto_ruta", id=id)
+            if presupuesto < 0:
+                return redirigir_o_responder_error("El presupuesto no puede ser negativo.", "editar_proyecto_ruta", id=id)
+
+        editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"], presupuesto)
         auditar("editar", "proyecto", id, f"Editó el proyecto '{titulo}'.")
 
         if fecha_entrega != fecha_entrega_anterior and proyecto_esta_por_vencer(estado, fecha_entrega):
@@ -1005,6 +1092,41 @@ def eliminar_proyecto_ruta(id):
     flash("Proyecto eliminado.", "exito")
     return redirect(url_for("ver_proyectos"))
 
+
+@app.route("/proyectos/<int:id>/archivar", methods=["POST"])
+@login_requerido
+def archivar_proyecto_ruta(id):
+    proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
+    if proyecto is None:
+        return redirigir_o_responder_error("Proyecto no encontrado.", "ver_proyectos")
+
+    archivar_proyecto_por_id(id, session["agencia_id"])
+    auditar("editar", "proyecto", id, f"Archivó el proyecto '{proyecto[1]}'.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Proyecto archivado.", "exito")
+    return redirect(request.referrer or url_for("ver_proyectos"))
+
+
+@app.route("/proyectos/<int:id>/desarchivar", methods=["POST"])
+@login_requerido
+def desarchivar_proyecto_ruta(id):
+    proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
+    if proyecto is None:
+        return redirigir_o_responder_error("Proyecto no encontrado.", "ver_proyectos")
+
+    desarchivar_proyecto_por_id(id, session["agencia_id"])
+    auditar("editar", "proyecto", id, f"Desarchivó el proyecto '{proyecto[1]}'.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Proyecto restaurado.", "exito")
+    return redirect(request.referrer or url_for("ver_proyectos"))
+
+
 @app.route("/pagos")
 @login_requerido
 def ver_pagos():
@@ -1044,6 +1166,9 @@ def nuevo_pago():
             monto = float(monto)
         except ValueError:
             return redirigir_o_responder_error("El monto debe ser un número válido.", "nuevo_pago")
+
+        if monto <= 0:
+            return redirigir_o_responder_error("El monto tiene que ser mayor a 0.", "nuevo_pago")
 
         agregar_pago(proyecto_id, monto, fecha, session["agencia_id"], estado)
         auditar("crear", "pago", None, f"Registró un pago de ${monto:,.2f} ({estado}).")
@@ -1127,6 +1252,9 @@ def editar_pago_ruta(id):
             monto = float(monto)
         except ValueError:
             return redirigir_o_responder_error("El monto debe ser un número válido.", "editar_pago_ruta", id=id)
+
+        if monto <= 0:
+            return redirigir_o_responder_error("El monto tiene que ser mayor a 0.", "editar_pago_ruta", id=id)
 
         editar_pago_por_id(id, proyecto_id, monto, fecha, session["agencia_id"], estado)
         auditar("editar", "pago", id, f"Editó el pago #{id} (${monto:,.2f}, {estado}).")

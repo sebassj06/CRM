@@ -2,7 +2,8 @@ import csv
 import io
 from datetime import date, datetime
 import openpyxl
-from core.clientes import agregar_cliente, obtener_cliente_por_email, email_valido
+from core.clientes import email_valido
+from core.database import obtener_conexion
 
 
 def _texto(valor):
@@ -13,10 +14,17 @@ def _texto(valor):
     return str(valor).strip()
 
 
+def _normalizar_encabezados(fila):
+    # Los nombres de columna se comparan sin importar mayúsculas/espacios: la
+    # pantalla de importación le muestra al usuario "Nombre, Email..." pero
+    # el resto del código busca las claves en minúscula.
+    return {(clave or "").strip().lower(): valor for clave, valor in fila.items()}
+
+
 def _filas_desde_csv(archivo):
     contenido = archivo.stream.read().decode("utf-8-sig")
     lector = csv.DictReader(io.StringIO(contenido))
-    return list(lector)
+    return [_normalizar_encabezados(fila) for fila in lector]
 
 
 def _filas_desde_excel(archivo):
@@ -27,7 +35,7 @@ def _filas_desde_excel(archivo):
     if not filas_crudas:
         return []
 
-    encabezados = [_texto(valor) for valor in filas_crudas[0]]
+    encabezados = [_texto(valor).strip().lower() for valor in filas_crudas[0]]
 
     filas = []
     for fila_valores in filas_crudas[1:]:
@@ -52,6 +60,14 @@ def importar_clientes_desde_archivo(archivo, agencia_id):
     duplicados = 0
     invalidos = 0
 
+    # Una sola conexión para todo el archivo en vez de una por fila: con
+    # archivos de varios cientos de clientes, abrir/cerrar conexión por fila
+    # hacía que la importación tardara decenas de segundos.
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT email FROM clientes WHERE agencia_id = %s", (agencia_id,))
+    emails_existentes = {fila[0] for fila in cursor.fetchall() if fila[0]}
+
     for fila in filas:
         nombre = _texto(fila.get("nombre"))
         email = _texto(fila.get("email"))
@@ -64,12 +80,20 @@ def importar_clientes_desde_archivo(archivo, agencia_id):
             invalidos += 1
             continue
 
-        if obtener_cliente_por_email(email, agencia_id):
+        if email in emails_existentes:
             duplicados += 1
             continue
 
-        agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde or None)
+        cursor.execute(
+            "INSERT INTO clientes (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde or None)
+        )
+        emails_existentes.add(email)
         importados += 1
+
+    conexion.commit()
+    cursor.close()
+    conexion.close()
 
     return {"importados": importados, "duplicados": duplicados, "invalidos": invalidos}
 
