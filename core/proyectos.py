@@ -34,6 +34,28 @@ def obtener_proyectos(agencia_id):
     conexion.close()
     return resultados
 
+def obtener_proyectos_paginado(agencia_id, pagina, por_pagina):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT COUNT(*) FROM proyectos WHERE agencia_id = %s", (agencia_id,))
+    total = cursor.fetchone()[0]
+    offset = (pagina - 1) * por_pagina
+    cursor.execute(
+        "SELECT * FROM proyectos WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, por_pagina, offset)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados, total
+
+def proyectos_recientes(agencia_id, limite=5):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT * FROM proyectos WHERE agencia_id = %s ORDER BY id DESC LIMIT %s", (agencia_id, limite))
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
 def obtener_proyecto_por_id(id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
@@ -48,6 +70,13 @@ def editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, agenci
     cursor.execute("UPDATE proyectos SET titulo = %s, cliente_id = %s, estado = %s, fecha_entrega = %s WHERE id = %s AND agencia_id = %s",
                    (titulo, cliente_id, estado, fecha_entrega, id, agencia_id)
     )
+    conexion.commit()
+    conexion.close()
+
+def marcar_proyecto_completado(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE proyectos SET estado = 'Completado' WHERE id = %s AND agencia_id = %s", (id, agencia_id))
     conexion.commit()
     conexion.close()
 

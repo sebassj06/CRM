@@ -19,7 +19,8 @@ def crear_tablas():
             nombre TEXT,
             telegram_chat_id TEXT,
             gmail_user TEXT,
-            gmail_app_password TEXT)
+            gmail_app_password TEXT,
+            moneda TEXT DEFAULT 'USD')
         """)
 
     cursor.execute("""
@@ -50,7 +51,8 @@ def crear_tablas():
             proyecto_id INTEGER,
             monto REAL,
             fecha TEXT,
-            agencia_id INTEGER)
+            agencia_id INTEGER,
+            estado TEXT DEFAULT 'cobrado')
         """)
 
     cursor.execute("""
@@ -68,7 +70,31 @@ def crear_tablas():
             nombre_usuario TEXT UNIQUE,
             contraseña_hash TEXT,
             agencia_id INTEGER,
-            rol TEXT DEFAULT 'miembro')
+            rol TEXT DEFAULT 'miembro',
+            email TEXT,
+            foto_perfil TEXT)
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS verificaciones_email (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER,
+            email_nuevo TEXT,
+            codigo TEXT,
+            creado_en TIMESTAMP DEFAULT NOW())
+        """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS auditoria (
+            id SERIAL PRIMARY KEY,
+            agencia_id INTEGER,
+            usuario_id INTEGER,
+            nombre_usuario TEXT,
+            accion TEXT,
+            entidad TEXT,
+            entidad_id INTEGER,
+            descripcion TEXT,
+            fecha_hora TIMESTAMP DEFAULT NOW())
         """)
 
     conexion.commit()

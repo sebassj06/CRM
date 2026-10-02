@@ -1,15 +1,23 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}{% if nota %}Editar nota{% else %}Nueva nota{% endif %} · CRM Agencia{% endblock %}
 
 {% block content %}
-    {% if nota %}
-        <h1>Editar nota</h1>
-    {% else %}
-        <h1>Nueva nota</h1>
+    <a href="/notas" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a notas</a>
 
-        <div class="formulario">
-            <h2>Redactar con IA</h2>
+    <div class="encabezado-pagina">
+        <div>
+            <h1>{% if nota %}Editar nota{% else %}Nueva nota{% endif %}</h1>
+        </div>
+    </div>
+
+    {% if not nota %}
+        <div class="tarjeta tarjeta-ia">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-notas">{{ icono('ia-destello', tamano=16) }}</span>
+                <h2>Redactar con IA</h2>
+            </div>
             <form method="POST" action="/notas/generar-ia">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="campo">
@@ -55,7 +63,7 @@
             {% else %}
                 <input type="submit" value="Guardar" data-cargando="Guardando...">
             {% endif %}
-            <a href="/notas" class="btn btn-ghost">Cancelar</a>
+            <a href="/notas" class="btn btn-secundario">Cancelar</a>
         </div>
     </form>
 {% endblock %}

@@ -1,33 +1,104 @@
 {% extends "base.html" %}
 {% from "_iconos.html" import icono %}
+{% from "_montos.html" import monto_convertido %}
 
 {% block title %}Pago de {{ titulo_proyecto }} · CRM Agencia{% endblock %}
 
 {% block content %}
-    {% set _monto_texto = "{:,.2f}".format(pago[2]) %}
-    {% if _monto_texto.endswith('.00') %}
-        {% set _monto_texto = _monto_texto[:-3] %}
-    {% endif %}
-
     <a href="/pagos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a pagos</a>
 
     <div class="encabezado-pagina">
         <div>
-            <h1>${{ _monto_texto }}</h1>
+            <h1>${{ pago[2] | monto }}</h1>
+            {{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}
             <p class="encabezado-descripcion">
                 <a href="/proyectos/{{ pago[1] }}">{{ titulo_proyecto }}</a>
             </p>
         </div>
         <div class="encabezado-acciones">
-            <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar pago</a>
+            {% if pago[5] == 'pendiente' %}
+            <form method="POST" action="/pagos/{{ pago[0] }}/marcar-cobrado" class="form-en-linea">
+                <button type="submit" class="btn btn-secundario">{{ icono('check-circulo', tamano=16) }} Marcar cobrado</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
+            <a href="/pagos/{{ pago[0] }}/recibo" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Descargar recibo</a>
+            <button
+                type="button"
+                class="btn btn-secundario boton-editar-pago"
+                data-id="{{ pago[0] }}"
+                data-proyecto-id="{{ pago[1] }}"
+                data-monto="{{ pago[2] }}"
+                data-fecha="{{ pago[3] or '' }}"
+                data-estado="{{ pago[5] or 'cobrado' }}"
+                data-redirigir-a="/pagos/{{ pago[0] }}"
+            >
+                {{ icono('editar', tamano=16) }} Editar pago
+            </button>
         </div>
     </div>
 
     <div class="tarjeta">
         <h2>Detalles</h2>
         <dl>
+            <dt>Estado</dt>
+            <dd>
+                {% if pago[5] == 'pendiente' %}
+                <span class="badge badge-pendiente">Pendiente</span>
+                {% else %}
+                <span class="badge badge-completado">Cobrado</span>
+                {% endif %}
+            </dd>
             <dt>Fecha</dt>
             <dd>{{ pago[3] }}</dd>
         </dl>
     </div>
+
+    <dialog id="modal-pago" class="modal">
+        <form method="POST" id="formulario-pago" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-pagos">{{ icono('pagos', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-pago-titulo">Editar pago</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-pago" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-pago-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-proyecto_id">Proyecto</label>
+                    <select id="modal-proyecto_id" name="proyecto_id" autofocus>
+                        {% for proyecto in proyectos %}
+                            <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-monto">Monto</label>
+                    <input type="number" step="0.01" min="0" id="modal-monto" name="monto" placeholder="0.00">
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-pago">Fecha</label>
+                    <input type="date" id="modal-fecha-pago" name="fecha">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-estado-pago">Estado</label>
+                    <select id="modal-estado-pago" name="estado">
+                        <option value="cobrado">Cobrado</option>
+                        <option value="pendiente">Pendiente</option>
+                    </select>
+                    <p class="ayuda-campo">"Pendiente" es un pago que esperás recibir — aparece en "Próximos pagos" del panel y no suma al total cobrado hasta que lo marqués como cobrado.</p>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-pago" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
 {% endblock %}

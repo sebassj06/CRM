@@ -1,5 +1,6 @@
 import re
 from core.database import obtener_conexion
+from core.paises import PAISES
 
 PATRON_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
@@ -8,6 +9,27 @@ def email_valido(email):
     """True si el texto tiene forma de email (algo@algo.algo). No verifica que
     el dominio exista de verdad, solo que el formato sea razonable."""
     return bool(PATRON_EMAIL.match(email))
+
+
+def telefono_valido(telefono):
+    """El teléfono es opcional: vacío siempre es válido. Si viene cargado con
+    un prefijo de país reconocido (ej. "+54 91112345678"), exige que la parte
+    numérica tenga exactamente la cantidad de dígitos esperada para ese país.
+    Si el prefijo no se reconoce (números viejos cargados como texto libre
+    antes de que existiera el selector de país), no se valida para no romper
+    datos existentes."""
+    telefono = (telefono or "").strip()
+    if not telefono:
+        return True
+
+    prefijos = sorted((pais[1] for pais in PAISES), key=len, reverse=True)
+    prefijo_encontrado = next((prefijo for prefijo in prefijos if telefono.startswith(prefijo)), None)
+    if not prefijo_encontrado:
+        return True
+
+    longitud_esperada = next(longitud for _, prefijo, longitud in PAISES if prefijo == prefijo_encontrado)
+    numero = re.sub(r"\D", "", telefono[len(prefijo_encontrado):])
+    return len(numero) == longitud_esperada
 
 
 def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None):
@@ -74,6 +96,20 @@ def obtener_clientes(agencia_id):
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
+
+def obtener_clientes_paginado(agencia_id, pagina, por_pagina):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT COUNT(*) FROM clientes WHERE agencia_id = %s", (agencia_id,))
+    total = cursor.fetchone()[0]
+    offset = (pagina - 1) * por_pagina
+    cursor.execute(
+        "SELECT * FROM clientes WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, por_pagina, offset)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados, total
 
 def obtener_cliente_por_id(id, agencia_id):
     conexion = obtener_conexion()

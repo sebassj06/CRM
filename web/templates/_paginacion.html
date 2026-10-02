@@ -1,0 +1,18 @@
+{% from "_iconos.html" import icono %}
+{% macro controles_paginacion(pagina, total_paginas, ruta_base) %}
+{% if total_paginas > 1 %}
+<div class="paginacion">
+    {% if pagina > 1 %}
+    <a href="{{ ruta_base }}?pagina={{ pagina - 1 }}" class="btn btn-secundario btn-sm">{{ icono('flecha-izquierda', tamano=14) }} Anterior</a>
+    {% else %}
+    <span class="btn btn-secundario btn-sm btn-deshabilitado">{{ icono('flecha-izquierda', tamano=14) }} Anterior</span>
+    {% endif %}
+    <span class="paginacion-info">Página {{ pagina }} de {{ total_paginas }}</span>
+    {% if pagina < total_paginas %}
+    <a href="{{ ruta_base }}?pagina={{ pagina + 1 }}" class="btn btn-secundario btn-sm">Siguiente {{ icono('flecha-derecha', tamano=14) }}</a>
+    {% else %}
+    <span class="btn btn-secundario btn-sm btn-deshabilitado">Siguiente {{ icono('flecha-derecha', tamano=14) }}</span>
+    {% endif %}
+</div>
+{% endif %}
+{% endmacro %}

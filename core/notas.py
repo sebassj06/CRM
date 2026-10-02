@@ -33,6 +33,20 @@ def obtener_notas(agencia_id):
     conexion.close()
     return resultados
 
+def obtener_notas_paginado(agencia_id, pagina, por_pagina):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT COUNT(*) FROM notas WHERE agencia_id = %s", (agencia_id,))
+    total = cursor.fetchone()[0]
+    offset = (pagina - 1) * por_pagina
+    cursor.execute(
+        "SELECT * FROM notas WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, por_pagina, offset)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados, total
+
 def obtener_nota_por_id(id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()

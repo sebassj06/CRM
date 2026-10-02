@@ -12,16 +12,17 @@ def crear_agencia(nombre, telegram_chat_id=None, gmail_user=None, gmail_app_pass
     conexion.close()
     return agencia_id
 
-def actualizar_configuracion_agencia(agencia_id, telegram_chat_id, gmail_user, gmail_app_password):
+def actualizar_configuracion_agencia(agencia_id, telegram_chat_id, gmail_user, gmail_app_password, moneda="USD"):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute(
         """UPDATE agencias
            SET telegram_chat_id = %s,
                gmail_user = %s,
-               gmail_app_password = COALESCE(%s, gmail_app_password)
+               gmail_app_password = COALESCE(%s, gmail_app_password),
+               moneda = %s
            WHERE id = %s""",
-        (telegram_chat_id, gmail_user, gmail_app_password, agencia_id)
+        (telegram_chat_id, gmail_user, gmail_app_password, moneda, agencia_id)
     )
     conexion.commit()
     conexion.close()

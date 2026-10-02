@@ -1,10 +1,10 @@
 from core.database import obtener_conexion
 
-def agregar_pago(proyecto_id, monto, fecha, agencia_id):
+def agregar_pago(proyecto_id, monto, fecha, agencia_id, estado="cobrado"):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO pagos (proyecto_id, monto, fecha, agencia_id) VALUES (%s, %s, %s, %s)",
-                   (proyecto_id, monto, fecha, agencia_id))
+    cursor.execute("INSERT INTO pagos (proyecto_id, monto, fecha, agencia_id, estado) VALUES (%s, %s, %s, %s, %s)",
+                   (proyecto_id, monto, fecha, agencia_id, estado))
     conexion.commit()
     conexion.close()
 
@@ -33,6 +33,34 @@ def obtener_pagos(agencia_id):
     conexion.close()
     return resultados
 
+def obtener_pagos_paginado(agencia_id, pagina, por_pagina):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT COUNT(*) FROM pagos WHERE agencia_id = %s", (agencia_id,))
+    total = cursor.fetchone()[0]
+    offset = (pagina - 1) * por_pagina
+    cursor.execute(
+        "SELECT * FROM pagos WHERE agencia_id = %s ORDER BY id LIMIT %s OFFSET %s",
+        (agencia_id, por_pagina, offset)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados, total
+
+def pagos_proximos(agencia_id, desde=None, limite=5):
+    # "Próximos pagos" ahora es lo que de verdad significa: pagos marcados
+    # como pendientes (sin importar si la fecha ya pasó o no — un pago
+    # pendiente vencido sigue siendo algo que hay que cobrar).
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT * FROM pagos WHERE agencia_id = %s AND estado = 'pendiente' ORDER BY fecha ASC LIMIT %s",
+        (agencia_id, limite)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
 def obtener_pago_por_id(id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
@@ -41,12 +69,19 @@ def obtener_pago_por_id(id, agencia_id):
     conexion.close()
     return resultado
 
-def editar_pago_por_id(id, proyecto_id, monto, fecha, agencia_id):
+def editar_pago_por_id(id, proyecto_id, monto, fecha, agencia_id, estado="cobrado"):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE pagos SET proyecto_id = %s, monto = %s, fecha = %s WHERE id = %s AND agencia_id = %s",
-                   (proyecto_id, monto, fecha, id, agencia_id)
+    cursor.execute("UPDATE pagos SET proyecto_id = %s, monto = %s, fecha = %s, estado = %s WHERE id = %s AND agencia_id = %s",
+                   (proyecto_id, monto, fecha, estado, id, agencia_id)
     )
+    conexion.commit()
+    conexion.close()
+
+def marcar_pago_cobrado(id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE pagos SET estado = 'cobrado' WHERE id = %s AND agencia_id = %s", (id, agencia_id))
     conexion.commit()
     conexion.close()
 

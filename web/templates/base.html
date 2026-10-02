@@ -20,7 +20,7 @@
     <div class="layout">
         <div id="overlay-menu" class="overlay-menu"></div>
         <aside class="sidebar">
-            <div class="sidebar-marca">CRM Agencia</div>
+            <div class="sidebar-marca">{{ agencia_actual or 'CRM Agencia' }}</div>
             <nav>
                 <div class="sidebar-grupo-titulo">Principal</div>
                 <a href="/" class="{{ 'activo' if request.path == '/' else '' }}">{{ icono('inicio') }} Inicio</a>
@@ -28,8 +28,8 @@
                 <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">{{ icono('proyectos') }} Proyectos</a>
                 <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">{{ icono('pagos') }} Pagos</a>
                 <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">{{ icono('notas') }} Notas</a>
-                <div class="sidebar-grupo-titulo">Sistema</div>
                 {% if rol_actual == 'admin' %}
+                    <div class="sidebar-grupo-titulo">Sistema</div>
                     <a href="/usuarios" class="{{ 'activo' if request.path.startswith('/usuarios') else '' }}">{{ icono('usuario') }} Usuarios</a>
                     <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
                 {% endif %}
@@ -39,9 +39,38 @@
             <header class="topbar">
                 <button type="button" id="boton-menu" class="btn btn-secundario boton-menu" aria-label="Abrir menú">{{ icono('menu') }}</button>
                 {% if session.usuario %}
-                    <div class="menu-usuario">
+                    <form method="GET" action="/buscar" class="topbar-buscador">
+                        {{ icono('buscar', clase='topbar-buscador-icono', tamano=16) }}
+                        <input type="search" name="q" placeholder="Buscar clientes, proyectos, pagos, notas..." aria-label="Buscar en todo el CRM" value="{{ request.args.get('q', '') }}">
+                    </form>
+                    <div class="menu-desplegable menu-notificaciones">
+                        <button type="button" id="boton-notificaciones" class="boton-usuario boton-notificaciones" aria-haspopup="true" aria-expanded="false" aria-label="Notificaciones">
+                            {{ icono('campana') }}
+                            {% if notificaciones %}<span class="badge-notificacion">{{ notificaciones|length }}</span>{% endif %}
+                        </button>
+                        <div class="dropdown-usuario dropdown-notificaciones">
+                            <div class="dropdown-usuario-encabezado">
+                                <div class="dropdown-usuario-nombre">Proyectos por vencer</div>
+                            </div>
+                            {% if notificaciones %}
+                                {% for proyecto, nombre_cliente in notificaciones %}
+                                    <a href="/proyectos/{{ proyecto[0] }}" class="dropdown-usuario-item dropdown-notificacion-item">
+                                        <span class="dropdown-notificacion-titulo">{{ proyecto[1] }}</span>
+                                        <span class="texto-secundario">{{ nombre_cliente }} · Entrega {{ proyecto[4] }}</span>
+                                    </a>
+                                {% endfor %}
+                            {% else %}
+                                <p class="dropdown-notificacion-vacio">No hay proyectos por vencer en los próximos 3 días.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="menu-desplegable menu-usuario">
                         <button type="button" id="boton-usuario" class="boton-usuario" aria-haspopup="true" aria-expanded="false">
-                            <span class="avatar-usuario">{{ session.usuario[:2]|upper }}</span>
+                            {% if foto_perfil_actual %}
+                                <img class="avatar-usuario" src="{{ url_for('static', filename=foto_perfil_actual) }}" alt="">
+                            {% else %}
+                                <span class="avatar-usuario">{{ session.usuario[:2]|upper }}</span>
+                            {% endif %}
                             <span class="boton-usuario-texto">
                                 <span class="boton-usuario-nombre">{{ session.usuario }}</span>
                                 {% if agencia_actual %}<span class="boton-usuario-agencia">{{ agencia_actual }}</span>{% endif %}
@@ -50,13 +79,19 @@
                         </button>
                         <div id="dropdown-usuario" class="dropdown-usuario">
                             <div class="dropdown-usuario-encabezado">
-                                <span class="avatar-usuario avatar-usuario-grande">{{ session.usuario[:2]|upper }}</span>
+                                {% if foto_perfil_actual %}
+                                    <img class="avatar-usuario avatar-usuario-grande" src="{{ url_for('static', filename=foto_perfil_actual) }}" alt="">
+                                {% else %}
+                                    <span class="avatar-usuario avatar-usuario-grande">{{ session.usuario[:2]|upper }}</span>
+                                {% endif %}
                                 <div>
                                     <div class="dropdown-usuario-nombre">{{ session.usuario }}</div>
                                     {% if agencia_actual %}<div class="dropdown-usuario-agencia">{{ agencia_actual }}</div>{% endif %}
                                 </div>
                             </div>
+                            <a href="/perfil" class="dropdown-usuario-item">{{ icono('usuario') }} Mi perfil</a>
                             {% if rol_actual == 'admin' %}
+                                <a href="/usuarios" class="dropdown-usuario-item">{{ icono('usuario') }} Usuarios</a>
                                 <a href="/configuracion" class="dropdown-usuario-item">{{ icono('configuracion') }} Configuración</a>
                             {% endif %}
                             <button type="button" id="boton-tema" class="dropdown-usuario-item dropdown-usuario-boton">{{ icono('apariencia') }} <span id="texto-tema">Modo oscuro</span></button>
@@ -83,6 +118,17 @@
                         </main>
         </div>
     </div>
+    <dialog id="modal-confirmar-eliminar" class="modal modal-confirmacion">
+        <div class="formulario">
+            <div class="modal-confirmacion-icono">{{ icono('eliminar', tamano=22) }}</div>
+            <h2>¿Eliminar este elemento?</h2>
+            <p id="modal-confirmar-eliminar-mensaje" class="modal-confirmacion-mensaje">Esta acción no se puede deshacer.</p>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-eliminar" class="btn btn-secundario">Cancelar</button>
+                <button type="button" id="boton-confirmar-eliminar" class="btn btn-peligro">Eliminar</button>
+            </div>
+        </div>
+    </dialog>
     <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </body>
 </html>

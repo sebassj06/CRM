@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% from "_montos.html" import monto_convertido %}
+
+{% block title %}Buscar "{{ termino }}" · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Resultados para "{{ termino }}"</h1>
+            <p class="encabezado-descripcion">
+                {% if termino %}{{ total_resultados }} resultado{{ 's' if total_resultados != 1 else '' }} encontrado{{ 's' if total_resultados != 1 else '' }}.{% else %}Escribí algo en el buscador de arriba.{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if termino and total_resultados == 0 %}
+        <div class="tarjeta estado-vacio">
+            <h2>No encontramos nada</h2>
+            <p>Probá con otra palabra — buscamos en nombres de clientes, emails, empresas, títulos de proyectos, contenido de notas y el proyecto asociado a cada pago.</p>
+        </div>
+    {% endif %}
+
+    {% if clientes %}
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-clientes">{{ icono('clientes', tamano=16) }}</span>
+                <h2>Clientes</h2>
+            </div>
+            <ul class="lista-proyectos">
+                {% for cliente in clientes %}
+                    <li class="proyecto-item">
+                        <div>
+                            <a href="/clientes/{{ cliente[0] }}" class="proyecto-titulo">{{ cliente[1] }}</a>
+                            <div class="texto-secundario">{{ cliente[2] }}{% if cliente[4] %} · {{ cliente[4] }}{% endif %}</div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if proyectos %}
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-proyectos">{{ icono('proyectos', tamano=16) }}</span>
+                <h2>Proyectos</h2>
+            </div>
+            <ul class="lista-proyectos">
+                {% for proyecto, nombre_cliente in proyectos %}
+                    <li class="proyecto-item">
+                        <div>
+                            <a href="/proyectos/{{ proyecto[0] }}" class="proyecto-titulo">{{ proyecto[1] }}</a>
+                            <div class="texto-secundario">{{ nombre_cliente }}</div>
+                        </div>
+                        <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if pagos %}
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-pagos">{{ icono('pagos', tamano=16) }}</span>
+                <h2>Pagos</h2>
+            </div>
+            <ul class="lista-registros">
+                {% for pago, titulo_proyecto in pagos %}
+                    <li class="registro-item">
+                        <div>
+                            <a href="/pagos/{{ pago[0] }}" class="registro-monto">${{ pago[2] | monto }}</a>
+                            {{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}
+                            <div class="texto-secundario">{{ titulo_proyecto }}</div>
+                        </div>
+                        <span class="texto-secundario">{{ pago[3] }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if notas %}
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-notas">{{ icono('notas', tamano=16) }}</span>
+                <h2>Notas</h2>
+            </div>
+            <ul class="lista-notas">
+                {% for nota, nombre_cliente in notas %}
+                    <li class="nota-item">
+                        <a href="/notas/{{ nota[0] }}" class="proyecto-titulo">{{ nombre_cliente }}</a>
+                        <span class="nota-fecha">{{ nota[3] }}</span>
+                        <p class="nota-contenido texto-truncado">{{ nota[2] }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+{% endblock %}

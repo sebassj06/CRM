@@ -1,23 +1,35 @@
 {% extends "base_publico.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Iniciar sesión · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h2>Iniciar sesión</h2>
+    <span class="etiqueta-publica">Bienvenido a</span>
+    <div class="marca-wordmark">
+        <span class="marca-logo">C</span>
+        <span class="marca-nombre">CRM Agencia</span>
+    </div>
+    <p class="subtitulo-publico">Iniciá sesión para acceder a tu agencia.</p>
 
     {% if error %}
         <div class="flash flash-error">{{ error }}</div>
     {% endif %}
 
-    <form method="POST" class="formulario">
+    <form method="POST" class="formulario-publico">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="campo">
-            <label for="nombre_usuario">Usuario</label>
-            <input type="text" id="nombre_usuario" name="nombre_usuario">
+        <div class="campo campo-icono">
+            <label class="visualmente-oculto" for="nombre_usuario">Usuario</label>
+            <span class="campo-icono-svg">{{ icono('usuario') }}</span>
+            <input type="text" id="nombre_usuario" name="nombre_usuario" placeholder="Usuario" autocomplete="username" autofocus>
         </div>
-        <div class="campo">
-            <label for="contraseña">Contraseña</label>
-            <input type="password" id="contraseña" name="contraseña">
+        <div class="campo campo-icono">
+            <label class="visualmente-oculto" for="contraseña">Contraseña</label>
+            <span class="campo-icono-svg">{{ icono('candado') }}</span>
+            <input type="password" id="contraseña" name="contraseña" placeholder="Contraseña" autocomplete="current-password">
+            <button type="button" class="boton-ver-password" aria-label="Mostrar contraseña" aria-pressed="false">
+                <span class="icono-ojo">{{ icono('ojo') }}</span>
+                <span class="icono-ojo-cerrado">{{ icono('ojo-cerrado') }}</span>
+            </button>
         </div>
         <input type="submit" value="Entrar" data-cargando="Entrando...">
     </form>

@@ -1,0 +1,8 @@
+{# Línea secundaria con el monto convertido a la moneda local de la agencia,
+   a partir de un valor en dólares. No muestra nada si la agencia usa USD o
+   si no se pudo conseguir la cotización. #}
+{% macro monto_convertido(valor, moneda_actual, simbolo_actual, tasa_cambio, clase='texto-secundario') %}
+{% if moneda_actual and moneda_actual != 'USD' and tasa_cambio %}
+<span class="{{ clase }}">≈ {{ simbolo_actual }}{{ (valor * tasa_cambio) | monto }} {{ moneda_actual }}</span>
+{% endif %}
+{% endmacro %}

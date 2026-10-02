@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_iconos.html" import icono %}
+{% from "_montos.html" import monto_convertido %}
 
 {% block title %}{{ proyecto[1] }} · CRM Agencia{% endblock %}
 
@@ -17,7 +18,24 @@
         </div>
         <div class="encabezado-acciones">
             <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
-            <a href="/proyectos/{{ proyecto[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar proyecto</a>
+            {% if proyecto[3] != 'Completado' %}
+            <form method="POST" action="/proyectos/{{ proyecto[0] }}/marcar-completado" class="form-en-linea">
+                <button type="submit" class="btn btn-secundario">{{ icono('check-circulo', tamano=16) }} Marcar completado</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
+            <button
+                type="button"
+                class="btn btn-secundario boton-editar-proyecto"
+                data-id="{{ proyecto[0] }}"
+                data-titulo="{{ proyecto[1] }}"
+                data-cliente-id="{{ proyecto[2] }}"
+                data-estado="{{ proyecto[3] }}"
+                data-fecha-entrega="{{ proyecto[4] or '' }}"
+                data-redirigir-a="/proyectos/{{ proyecto[0] }}"
+            >
+                {{ icono('editar', tamano=16) }} Editar proyecto
+            </button>
         </div>
     </div>
 
@@ -35,7 +53,11 @@
             <ul class="lista-registros">
                 {% for pago in pagos %}
                     <li class="registro-item">
-                        <span class="registro-monto">${{ pago[2] }}</span>
+                        <div>
+                            <a href="/pagos/{{ pago[0] }}" class="registro-monto">${{ pago[2] | monto }}</a>
+                            {% if pago[5] == 'pendiente' %}<span class="badge badge-pendiente">Pendiente</span>{% endif %}
+                            {{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}
+                        </div>
                         <span class="texto-secundario">{{ pago[3] }}</span>
                     </li>
                 {% endfor %}
@@ -66,4 +88,52 @@
             </div>
         {% endif %}
     </div>
+
+    <dialog id="modal-proyecto" class="modal">
+        <form method="POST" id="formulario-proyecto" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('proyectos', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-proyecto-titulo">Editar proyecto</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-proyecto" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-proyecto-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-titulo">Título</label>
+                    <input type="text" id="modal-titulo" name="titulo" placeholder="Nombre del proyecto" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-cliente_id">Cliente</label>
+                    <select id="modal-cliente_id" name="cliente_id">
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente[0] }}">{{ cliente[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-estado">Estado</label>
+                    <select id="modal-estado" name="estado">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En progreso">En progreso</option>
+                        <option value="Completado">Completado</option>
+                    </select>
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-fecha_entrega">Fecha de entrega</label>
+                    <input type="date" id="modal-fecha_entrega" name="fecha_entrega">
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-proyecto" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
 {% endblock %}

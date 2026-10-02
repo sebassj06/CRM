@@ -12,7 +12,19 @@
             {% if cliente[4] %}<p class="encabezado-descripcion">{{ cliente[4] }}</p>{% endif %}
         </div>
         <div class="encabezado-acciones">
-            <a href="/clientes/{{ cliente[0] }}/editar" class="btn btn-secundario">{{ icono('editar', tamano=16) }} Editar cliente</a>
+            <button
+                type="button"
+                class="btn btn-secundario boton-editar-cliente"
+                data-id="{{ cliente[0] }}"
+                data-nombre="{{ cliente[1] }}"
+                data-email="{{ cliente[2] }}"
+                data-telefono="{{ cliente[3] or '' }}"
+                data-empresa="{{ cliente[4] or '' }}"
+                data-notas="{{ cliente[5] or '' }}"
+                data-redirigir-a="/clientes/{{ cliente[0] }}"
+            >
+                {{ icono('editar', tamano=16) }} Editar cliente
+            </button>
         </div>
     </div>
 
@@ -130,4 +142,56 @@
             <p class="mensaje-estado">{{ mensaje_envio }}</p>
         {% endif %}
     </div>
+
+    <dialog id="modal-cliente" class="modal">
+        <form method="POST" id="formulario-cliente" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-clientes">{{ icono('clientes', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-cliente-titulo">Editar cliente</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-cliente" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-cliente-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo">
+                    <label for="modal-nombre">Nombre</label>
+                    <input type="text" id="modal-nombre" name="nombre" placeholder="Nombre completo" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-email">Email</label>
+                    <input type="email" id="modal-email" name="email" placeholder="nombre@dominio.com">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-telefono-numero">Teléfono</label>
+                    <div class="campo-telefono">
+                        <select id="modal-telefono-prefijo" aria-label="Prefijo telefónico">
+                            {% for nombre, prefijo, longitud in paises %}
+                                <option value="{{ prefijo }}" data-longitud="{{ longitud }}">{{ nombre }} ({{ prefijo }})</option>
+                            {% endfor %}
+                        </select>
+                        <input type="tel" id="modal-telefono-numero" inputmode="numeric" placeholder="Opcional">
+                    </div>
+                    <input type="hidden" id="modal-telefono" name="telefono">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-empresa">Empresa</label>
+                    <input type="text" id="modal-empresa" name="empresa" placeholder="Opcional">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-notas">Notas</label>
+                    <input type="text" id="modal-notas" name="notas" placeholder="Opcional">
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-cliente" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
 {% endblock %}

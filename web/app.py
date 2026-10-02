@@ -14,13 +14,16 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
 from core.clientes import (obtener_clientes,
+                           obtener_clientes_paginado,
                            obtener_cliente_por_id,
                            obtener_cliente_por_email,
                            email_valido,
+                           telefono_valido,
                            agregar_cliente,
                            editar_cliente_por_id,
                            eliminar_cliente_por_id
 )
+from core.paginacion import normalizar_pagina, total_paginas, POR_PAGINA
 from core.proyectos import(
     obtener_proyectos,
     obtener_proyecto_por_id,
@@ -28,7 +31,11 @@ from core.proyectos import(
     editar_proyecto_por_id,
     eliminar_proyecto_por_id,
     proyecto_esta_por_vencer,
-    proyectos_de_cliente
+    proyectos_de_cliente,
+    proyectos_recientes,
+    proyectos_por_vencer,
+    obtener_proyectos_paginado,
+    marcar_proyecto_completado
 )
 from core.pagos import(
     obtener_pagos,
@@ -36,14 +43,18 @@ from core.pagos import(
     agregar_pago,
     editar_pago_por_id,
     eliminar_pago_por_id,
-    pagos_de_proyecto
+    pagos_de_proyecto,
+    pagos_proximos,
+    obtener_pagos_paginado,
+    marcar_pago_cobrado
 )
 from core.notas import(
     obtener_notas,
     obtener_nota_por_id,
     agregar_nota,
     editar_nota_por_id,
-    eliminar_nota_por_id
+    eliminar_nota_por_id,
+    obtener_notas_paginado
 )
 from core.estadisticas import (
     contar_clientes,
@@ -51,7 +62,8 @@ from core.estadisticas import (
     contar_pagos,
     total_cobrado,
     proyectos_por_estado,
-    estadisticas_dashboard
+    estadisticas_dashboard,
+    ingresos_por_mes
 )
 from core.usuarios import (
     verificar_usuario,
@@ -59,21 +71,54 @@ from core.usuarios import (
     usuarios_de_agencia,
     obtener_usuario_por_id,
     contar_admins_agencia,
-    eliminar_usuario_por_id
+    eliminar_usuario_por_id,
+    verificar_password_usuario,
+    actualizar_perfil_usuario,
+    actualizar_foto_perfil,
+    cambiar_contraseña_usuario,
+    crear_verificacion_email,
+    obtener_verificacion_email_pendiente,
+    confirmar_verificacion_email
 )
 from core.agencias import obtener_agencia_por_id, actualizar_configuracion_agencia
 from core.importacion import importar_clientes_desde_archivo, generar_plantilla_clientes
+from core.exportacion import exportar_clientes_excel, exportar_proyectos_excel, exportar_pagos_excel, exportar_respaldo_zip
+from core.busqueda import buscar_todo
+from core.recibos import generar_recibo_pdf
+from core.auditoria import registrar_auditoria, obtener_auditoria_paginado
+from core.divisas import MONEDAS, obtener_tasa_cambio, simbolo_moneda
+from core.paises import PAISES
 from avisos_telegram import avisar_proyecto_individual
+from werkzeug.utils import secure_filename
+import random
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 csrf = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
+CARPETA_FOTOS_PERFIL = os.path.join(app.root_path, "static", "uploads", "perfiles")
+EXTENSIONES_FOTO_PERMITIDAS = {"png", "jpg", "jpeg", "webp"}
+TAMANO_MAXIMO_FOTO = 3 * 1024 * 1024  # 3 MB
+
+
+def extension_foto_valida(nombre_archivo):
+    return "." in nombre_archivo and nombre_archivo.rsplit(".", 1)[1].lower() in EXTENSIONES_FOTO_PERMITIDAS
+
 # Filtro de plantilla para renderizar el markdown de las respuestas de IA como HTML
 # real (negrita, listas) en vez de texto plano con asteriscos sueltos. La sanitización
 # ocurre dentro de markdown_a_html_seguro, así que en los templates se usa con `| safe`.
 app.jinja_env.filters["markdown"] = markdown_a_html_seguro
+
+
+def formatear_monto(valor):
+    texto = "{:,.2f}".format(valor)
+    if texto.endswith(".00"):
+        texto = texto[:-3]
+    return texto
+
+
+app.jinja_env.filters["monto"] = formatear_monto
 
 def login_requerido(f):
     @wraps(f)
@@ -99,6 +144,13 @@ def es_peticion_ajax():
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def auditar(accion, entidad, entidad_id, descripcion):
+    registrar_auditoria(
+        session.get("agencia_id"), session.get("usuario_id"), session.get("usuario"),
+        accion, entidad, entidad_id, descripcion
+    )
+
+
 def redirigir_o_responder_error(mensaje, endpoint, **kwargs):
     if es_peticion_ajax():
         return jsonify({"exito": False, "error": mensaje}), 400
@@ -111,25 +163,123 @@ def inyectar_agencia_actual():
     if "agencia_id" in session:
         agencia = obtener_agencia_por_id(session["agencia_id"])
         if agencia:
-            return {"agencia_actual": agencia[1], "rol_actual": session.get("rol")}
-    return {"agencia_actual": None, "rol_actual": None}
+            usuario_actual = obtener_usuario_por_id(session["usuario_id"], session["agencia_id"])
+            return {
+                "agencia_actual": agencia[1],
+                "rol_actual": session.get("rol"),
+                "notificaciones": notificaciones_proyectos_por_vencer(session["agencia_id"]),
+                "foto_perfil_actual": usuario_actual[6] if usuario_actual else None
+            }
+    return {"agencia_actual": None, "rol_actual": None, "notificaciones": [], "foto_perfil_actual": None}
+
+
+def notificaciones_proyectos_por_vencer(agencia_id):
+    notificaciones = []
+    for proyecto in proyectos_por_vencer(agencia_id, dias=3):
+        cliente = obtener_cliente_por_id(proyecto[2], agencia_id)
+        nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+        notificaciones.append((proyecto, nombre_cliente))
+    return notificaciones
+
+def datos_dashboard_extra(agencia_id):
+    clases_estado = {"Pendiente": "badge-pendiente", "En progreso": "badge-progreso", "Completado": "badge-completado"}
+
+    proyectos_lista = []
+    for proyecto in proyectos_recientes(agencia_id, limite=5):
+        cliente = obtener_cliente_por_id(proyecto[2], agencia_id)
+        nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+        proyectos_lista.append((proyecto, nombre_cliente, clases_estado.get(proyecto[3], "badge-pendiente")))
+
+    pagos_lista = []
+    for pago in pagos_proximos(agencia_id, limite=5):
+        proyecto = obtener_proyecto_por_id(pago[1], agencia_id)
+        titulo_proyecto = proyecto[1] if proyecto else "Proyecto no encontrado"
+        pagos_lista.append((pago, titulo_proyecto))
+
+    ingresos_mensuales = ingresos_por_mes(agencia_id, meses=6)
+    max_ingreso_mensual = max((valor for _, valor in ingresos_mensuales), default=0) or 1
+    hay_ingresos_mensuales = any(valor > 0 for _, valor in ingresos_mensuales)
+
+    return {
+        "proyectos_recientes": proyectos_lista,
+        "pagos_proximos": pagos_lista,
+        "ingresos_mensuales": ingresos_mensuales,
+        "max_ingreso_mensual": max_ingreso_mensual,
+        "hay_ingresos_mensuales": hay_ingresos_mensuales
+    }
+
+
+def datos_conversion(agencia_id):
+    agencia = obtener_agencia_por_id(agencia_id)
+    moneda = agencia[5] if agencia and len(agencia) > 5 and agencia[5] else "USD"
+    tasa = obtener_tasa_cambio(moneda) if moneda != "USD" else None
+    return {
+        "moneda_actual": moneda,
+        "simbolo_actual": simbolo_moneda(moneda),
+        "tasa_cambio": tasa
+    }
+
+
+@app.route("/buscar")
+@login_requerido
+def buscar():
+    termino = request.args.get("q", "").strip()
+    resultados = buscar_todo(session["agencia_id"], termino)
+
+    pagos_con_titulo = []
+    for pago in resultados["pagos"]:
+        proyecto = obtener_proyecto_por_id(pago[1], session["agencia_id"])
+        titulo_proyecto = proyecto[1] if proyecto else "Proyecto no encontrado"
+        pagos_con_titulo.append((pago, titulo_proyecto))
+
+    notas_con_cliente = []
+    for nota in resultados["notas"]:
+        cliente = obtener_cliente_por_id(nota[1], session["agencia_id"])
+        nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+        notas_con_cliente.append((nota, nombre_cliente))
+
+    proyectos_con_cliente = []
+    for proyecto in resultados["proyectos"]:
+        cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
+        nombre_cliente = cliente[1] if cliente else "Cliente no encontrado"
+        proyectos_con_cliente.append((proyecto, nombre_cliente))
+
+    total_resultados = len(resultados["clientes"]) + len(proyectos_con_cliente) + len(pagos_con_titulo) + len(notas_con_cliente)
+    conversion = datos_conversion(session["agencia_id"])
+
+    return render_template(
+        "buscar.html", termino=termino, clientes=resultados["clientes"],
+        proyectos=proyectos_con_cliente, pagos=pagos_con_titulo, notas=notas_con_cliente,
+        total_resultados=total_resultados, **conversion
+    )
+
 
 @app.route("/")
 @login_requerido
 def inicio():
     datos = estadisticas_dashboard(session["agencia_id"])
-    return render_template("dashboard.html", **datos, resumen=None)
+    extra = datos_dashboard_extra(session["agencia_id"])
+    conversion = datos_conversion(session["agencia_id"])
+    return render_template("dashboard.html", **datos, **extra, **conversion, resumen=None)
 
 
 @app.route("/resumen-ejecutivo", methods=["POST"])
 @login_requerido
 def resumen_ejecutivo():
     datos = estadisticas_dashboard(session["agencia_id"])
-    resumen = generar_resumen_ejecutivo(
-        datos["total_clientes"], datos["total_proyectos"],
-        datos["total_pagos"], datos["cobrado"], datos["por_estado"]
-    )
-    return render_template("dashboard.html", **datos, resumen=resumen)
+    extra = datos_dashboard_extra(session["agencia_id"])
+    conversion = datos_conversion(session["agencia_id"])
+
+    try:
+        resumen = generar_resumen_ejecutivo(
+            datos["total_clientes"], datos["total_proyectos"],
+            datos["total_pagos"], datos["cobrado"], datos["por_estado"]
+        )
+    except Exception:
+        flash("No se pudo generar el resumen ejecutivo en este momento. Probá de nuevo en un rato.", "error")
+        resumen = None
+
+    return render_template("dashboard.html", **datos, **extra, **conversion, resumen=resumen)
     
 
 @app.route("/login", methods=["GET", "POST"])
@@ -155,6 +305,14 @@ def login():
     else:
         return render_template("login.html", error=None)
 
+@app.route("/configuracion/respaldo")
+@admin_requerido
+def descargar_respaldo():
+    buffer = exportar_respaldo_zip(session["agencia_id"])
+    nombre = f"respaldo_{date.today().isoformat()}.zip"
+    return send_file(buffer, as_attachment=True, download_name=nombre, mimetype="application/zip")
+
+
 @app.route("/configuracion", methods=["GET", "POST"])
 @admin_requerido
 def configuracion_agencia():
@@ -164,13 +322,14 @@ def configuracion_agencia():
         telegram_chat_id = request.form["telegram_chat_id"].strip() or None
         gmail_user = request.form["gmail_user"].strip() or None
         gmail_app_password = request.form["gmail_app_password"].strip() or None
+        moneda = request.form.get("moneda", "USD").strip() or "USD"
 
-        actualizar_configuracion_agencia(session["agencia_id"], telegram_chat_id, gmail_user, gmail_app_password)
+        actualizar_configuracion_agencia(session["agencia_id"], telegram_chat_id, gmail_user, gmail_app_password, moneda)
 
         flash("Configuración actualizada correctamente.", "exito")
         return redirect(url_for("configuracion_agencia"))
 
-    return render_template("configuracion.html", agencia=agencia)
+    return render_template("configuracion.html", agencia=agencia, monedas=MONEDAS)
 
 
 @app.route("/usuarios", methods=["GET", "POST"])
@@ -182,19 +341,22 @@ def ver_usuarios():
         rol = request.form["rol"]
 
         if nombre_usuario == "" or contraseña == "":
-            flash("Nombre de usuario y contraseña son obligatorios.", "error")
-            return redirect(url_for("ver_usuarios"))
+            return redirigir_o_responder_error("Nombre de usuario y contraseña son obligatorios.", "ver_usuarios")
 
         if rol not in ("admin", "miembro"):
-            flash("Rol inválido.", "error")
-            return redirect(url_for("ver_usuarios"))
+            return redirigir_o_responder_error("Rol inválido.", "ver_usuarios")
 
         try:
             crear_usuario(nombre_usuario, contraseña, session["agencia_id"], rol)
-            flash("Usuario agregado correctamente.", "exito")
         except Exception:
-            flash(f"Ya existe un usuario con el nombre '{nombre_usuario}'.", "error")
+            return redirigir_o_responder_error(f"Ya existe un usuario con el nombre '{nombre_usuario}'.", "ver_usuarios")
 
+        auditar("crear", "usuario", None, f"Creó el usuario '{nombre_usuario}' ({rol}).")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
+        flash("Usuario agregado correctamente.", "exito")
         return redirect(url_for("ver_usuarios"))
 
     usuarios = usuarios_de_agencia(session["agencia_id"])
@@ -219,8 +381,127 @@ def eliminar_usuario_ruta(id):
         return redirect(url_for("ver_usuarios"))
 
     eliminar_usuario_por_id(id, session["agencia_id"])
+    auditar("eliminar", "usuario", id, f"Eliminó al usuario '{usuario[1]}'.")
     flash("Usuario eliminado.", "exito")
     return redirect(url_for("ver_usuarios"))
+
+
+@app.route("/perfil", methods=["GET", "POST"])
+@login_requerido
+def ver_perfil():
+    usuario = obtener_usuario_por_id(session["usuario_id"], session["agencia_id"])
+    if usuario is None:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for("inicio"))
+
+    if request.method == "POST":
+        nombre_usuario = request.form.get("nombre_usuario", "").strip()
+        if nombre_usuario == "":
+            return redirigir_o_responder_error("El nombre de usuario no puede estar vacío.", "ver_perfil")
+
+        archivo = request.files.get("foto_perfil")
+        if archivo and archivo.filename:
+            if not extension_foto_valida(archivo.filename):
+                return redirigir_o_responder_error("La foto debe ser .png, .jpg, .jpeg o .webp.", "ver_perfil")
+
+            archivo.seek(0, os.SEEK_END)
+            tamano = archivo.tell()
+            archivo.seek(0)
+            if tamano > TAMANO_MAXIMO_FOTO:
+                return redirigir_o_responder_error("La foto no puede superar los 3 MB.", "ver_perfil")
+
+            os.makedirs(CARPETA_FOTOS_PERFIL, exist_ok=True)
+            if usuario[6]:
+                ruta_anterior = os.path.join(app.root_path, "static", usuario[6])
+                if os.path.exists(ruta_anterior):
+                    try:
+                        os.remove(ruta_anterior)
+                    except OSError:
+                        pass
+
+            extension = secure_filename(archivo.filename).rsplit(".", 1)[1].lower()
+            nombre_archivo = f"usuario_{session['usuario_id']}.{extension}"
+            archivo.save(os.path.join(CARPETA_FOTOS_PERFIL, nombre_archivo))
+            actualizar_foto_perfil(session["usuario_id"], f"uploads/perfiles/{nombre_archivo}")
+
+        nombre_cambio = nombre_usuario != usuario[1]
+        actualizar_perfil_usuario(session["usuario_id"], nombre_usuario)
+        session["usuario"] = nombre_usuario
+        if nombre_cambio:
+            auditar("editar", "perfil", session["usuario_id"], "Actualizó su nombre de usuario.")
+
+        email_nuevo = request.form.get("email", "").strip()
+        if email_nuevo and email_nuevo != (usuario[5] or ""):
+            if not email_valido(email_nuevo):
+                return redirigir_o_responder_error("El email no tiene un formato válido.", "ver_perfil")
+
+            agencia = obtener_agencia_por_id(session["agencia_id"])
+            if not (agencia and agencia[3] and agencia[4]):
+                return redirigir_o_responder_error(
+                    "Tu agencia no tiene Gmail configurado en Configuración, así que no podemos enviarte un código de verificación.",
+                    "ver_perfil"
+                )
+
+            codigo = f"{random.randint(0, 999999):06d}"
+            crear_verificacion_email(session["usuario_id"], email_nuevo, codigo)
+            try:
+                enviar_correo(
+                    email_nuevo,
+                    "Confirmá tu nuevo email · CRM Agencia",
+                    f"Tu código de verificación es: {codigo}\n\nIngresalo en tu perfil para confirmar el cambio de email. Vence en 15 minutos.",
+                    agencia[3], agencia[4]
+                )
+            except Exception as error:
+                return redirigir_o_responder_error(f"No se pudo enviar el código de verificación: {error}", "ver_perfil")
+
+            if es_peticion_ajax():
+                return jsonify({"exito": True, "verificacion_pendiente": True})
+            flash(f"Te enviamos un código de verificación a {email_nuevo}.", "exito")
+            return redirect(url_for("ver_perfil"))
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+        flash("Perfil actualizado correctamente.", "exito")
+        return redirect(url_for("ver_perfil"))
+
+    verificacion_pendiente = obtener_verificacion_email_pendiente(session["usuario_id"])
+    return render_template("perfil.html", usuario=usuario, verificacion_pendiente=verificacion_pendiente)
+
+
+@app.route("/perfil/confirmar-email", methods=["POST"])
+@login_requerido
+def confirmar_email_perfil():
+    codigo = request.form.get("codigo", "").strip()
+
+    if confirmar_verificacion_email(session["usuario_id"], codigo):
+        auditar("editar", "perfil", session["usuario_id"], "Confirmó el cambio de email.")
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+        flash("Email confirmado correctamente.", "exito")
+        return redirect(url_for("ver_perfil"))
+
+    return redirigir_o_responder_error("El código es incorrecto o venció. Pedí uno nuevo cambiando el email de vuelta.", "ver_perfil")
+
+
+@app.route("/perfil/cambiar-password", methods=["POST"])
+@login_requerido
+def cambiar_password_perfil():
+    contraseña_actual = request.form.get("contraseña_actual", "")
+    contraseña_nueva = request.form.get("contraseña_nueva", "")
+
+    if not verificar_password_usuario(session["usuario_id"], contraseña_actual):
+        return redirigir_o_responder_error("La contraseña actual no es correcta.", "ver_perfil")
+
+    if len(contraseña_nueva) < 6:
+        return redirigir_o_responder_error("La nueva contraseña debe tener al menos 6 caracteres.", "ver_perfil")
+
+    cambiar_contraseña_usuario(session["usuario_id"], contraseña_nueva)
+    auditar("editar", "perfil", session["usuario_id"], "Cambió su contraseña.")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+    flash("Contraseña actualizada correctamente.", "exito")
+    return redirect(url_for("ver_perfil"))
 
 
 @app.route("/logout")
@@ -235,8 +516,12 @@ def logout():
 @app.route("/clientes")
 @login_requerido
 def ver_clientes():
-    clientes = obtener_clientes(session["agencia_id"])
-    return render_template("clientes.html", clientes=clientes)
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    clientes, total = obtener_clientes_paginado(session["agencia_id"], pagina, POR_PAGINA)
+    return render_template(
+        "clientes.html", clientes=clientes, paises=PAISES,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
 
 @app.route("/clientes/<int:id>")
 @login_requerido
@@ -249,7 +534,7 @@ def ver_cliente(id):
     else:
         notas = notas_de_cliente(id, session["agencia_id"])
         proyectos = proyectos_de_cliente(id, session["agencia_id"])
-        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
+        return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=None, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None, paises=PAISES)
 
 
 @app.route("/clientes/<int:id>/resumen-ia", methods=["POST"])
@@ -263,7 +548,12 @@ def resumen_ia_cliente(id):
 
     notas = notas_de_cliente(id, session["agencia_id"])
     proyectos = proyectos_de_cliente(id, session["agencia_id"])
-    resumen = resumir_notas_cliente(notas)
+
+    try:
+        resumen = resumir_notas_cliente(notas)
+    except Exception:
+        flash("No se pudo generar el resumen en este momento. Probá de nuevo en un rato.", "error")
+        resumen = None
 
     return render_template("cliente_detalle.html", cliente=cliente, notas=notas, proyectos=proyectos, resumen=resumen, asunto_borrador=None, cuerpo_borrador=None, mensaje_envio=None)
 
@@ -280,7 +570,11 @@ def generar_correo_ia(id):
     asunto = request.form["asunto"]
     palabras_clave = request.form["palabras_clave"]
 
-    cuerpo_borrador = redactar_correo(cliente[1], palabras_clave)
+    try:
+        cuerpo_borrador = redactar_correo(cliente[1], palabras_clave)
+    except Exception:
+        flash("No se pudo generar el borrador en este momento. Probá de nuevo en un rato.", "error")
+        cuerpo_borrador = None
 
     notas = notas_de_cliente(id, session["agencia_id"])
     proyectos = proyectos_de_cliente(id, session["agencia_id"])
@@ -333,10 +627,14 @@ def nuevo_cliente():
         if not email_valido(email):
             return redirigir_o_responder_error("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "nuevo_cliente")
 
+        if not telefono_valido(telefono):
+            return redirigir_o_responder_error("El teléfono no tiene la cantidad de números esperada para el país seleccionado.", "nuevo_cliente")
+
         if obtener_cliente_por_email(email, session["agencia_id"]):
             return redirigir_o_responder_error(f"Ya existe un cliente con el email '{email}'.", "nuevo_cliente")
 
         agregar_cliente(nombre, email, telefono, empresa, notas, session["agencia_id"])
+        auditar("crear", "cliente", None, f"Creó el cliente '{nombre}'.")
 
         if es_peticion_ajax():
             return jsonify({"exito": True})
@@ -386,6 +684,30 @@ def descargar_plantilla_clientes():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+
+MIMETYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@app.route("/clientes/exportar")
+@login_requerido
+def exportar_clientes():
+    buffer = exportar_clientes_excel(session["agencia_id"])
+    return send_file(buffer, as_attachment=True, download_name="clientes.xlsx", mimetype=MIMETYPE_XLSX)
+
+
+@app.route("/proyectos/exportar")
+@login_requerido
+def exportar_proyectos():
+    buffer = exportar_proyectos_excel(session["agencia_id"])
+    return send_file(buffer, as_attachment=True, download_name="proyectos.xlsx", mimetype=MIMETYPE_XLSX)
+
+
+@app.route("/pagos/exportar")
+@login_requerido
+def exportar_pagos():
+    buffer = exportar_pagos_excel(session["agencia_id"])
+    return send_file(buffer, as_attachment=True, download_name="pagos.xlsx", mimetype=MIMETYPE_XLSX)
+
         
 @app.route("/clientes/<int:id>/editar", methods=["GET", "POST"])
 @login_requerido
@@ -409,11 +731,15 @@ def editar_cliente_ruta(id):
         if not email_valido(email):
             return redirigir_o_responder_error("El email no tiene un formato válido (ejemplo: nombre@dominio.com).", "editar_cliente_ruta", id=id)
 
+        if not telefono_valido(telefono):
+            return redirigir_o_responder_error("El teléfono no tiene la cantidad de números esperada para el país seleccionado.", "editar_cliente_ruta", id=id)
+
         otro_cliente = obtener_cliente_por_email(email, session["agencia_id"])
         if otro_cliente and otro_cliente[0] != id:
             return redirigir_o_responder_error(f"Ya existe otro cliente con el email '{email}'.", "editar_cliente_ruta", id=id)
 
         editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, session["agencia_id"])
+        auditar("editar", "cliente", id, f"Editó el cliente '{nombre}'.")
 
         if es_peticion_ajax():
             return jsonify({"exito": True})
@@ -427,9 +753,11 @@ def editar_cliente_ruta(id):
     
         
 @app.route("/clientes/<int:id>/eliminar", methods=["POST"])
-@login_requerido
+@admin_requerido
 def eliminar_cliente_ruta(id):
+    cliente = obtener_cliente_por_id(id, session["agencia_id"])
     eliminar_cliente_por_id(id, session["agencia_id"])
+    auditar("eliminar", "cliente", id, f"Eliminó el cliente '{cliente[1] if cliente else id}'.")
     flash("Cliente eliminado.", "exito")
     return redirect(url_for("ver_clientes"))
 
@@ -470,7 +798,8 @@ def api_cliente(id):
 @app.route("/proyectos")
 @login_requerido
 def ver_proyectos():
-    proyectos = obtener_proyectos(session["agencia_id"])
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    proyectos, total = obtener_proyectos_paginado(session["agencia_id"], pagina, POR_PAGINA)
     lista = []
     for proyecto in proyectos:
         cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
@@ -481,7 +810,10 @@ def ver_proyectos():
         por_vencer = proyecto_esta_por_vencer(proyecto[3], proyecto[4])
         lista.append((proyecto, nombre_cliente, por_vencer))
     clientes = obtener_clientes(session["agencia_id"])
-    return render_template("proyectos.html", proyectos=lista, clientes=clientes)
+    return render_template(
+        "proyectos.html", proyectos=lista, clientes=clientes,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
 
 
 @app.route("/proyectos/nuevo",methods=["GET", "POST"])
@@ -496,7 +828,11 @@ def nuevo_proyecto():
         if titulo == "" or cliente_id == "":
             return redirigir_o_responder_error("Título y cliente son obligatorios.", "nuevo_proyecto")
 
+        if fecha_entrega and fecha_entrega < date.today().isoformat():
+            return redirigir_o_responder_error("La fecha de entrega no puede ser anterior a hoy.", "nuevo_proyecto")
+
         agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
+        auditar("crear", "proyecto", None, f"Creó el proyecto '{titulo}'.")
 
         if proyecto_esta_por_vencer(estado, fecha_entrega):
             agencia = obtener_agencia_por_id(session["agencia_id"])
@@ -533,7 +869,9 @@ def ver_proyecto(id):
         else:
             nombre_cliente = cliente[1]
         pagos = pagos_de_proyecto(id, session["agencia_id"])
-        return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=None)
+        conversion = datos_conversion(session["agencia_id"])
+        clientes = obtener_clientes(session["agencia_id"])
+        return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=None, clientes=clientes, **conversion)
     
     
 @app.route("/proyectos/<int:id>/sugerencias-ia", methods=["POST"])
@@ -553,9 +891,16 @@ def sugerencias_ia_proyecto(id):
 
     notas = notas_de_cliente(proyecto[2], session["agencia_id"])
     pagos = pagos_de_proyecto(id, session["agencia_id"])
-    sugerencias = generar_sugerencias_proyecto(proyecto, nombre_cliente, notas, pagos)
+    conversion = datos_conversion(session["agencia_id"])
 
-    return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=sugerencias)
+    try:
+        sugerencias = generar_sugerencias_proyecto(proyecto, nombre_cliente, notas, pagos)
+    except Exception:
+        flash("No se pudieron generar las sugerencias en este momento. Probá de nuevo en un rato.", "error")
+        sugerencias = None
+
+    clientes = obtener_clientes(session["agencia_id"])
+    return render_template("proyecto_detalle.html", proyecto=proyecto, nombre_cliente=nombre_cliente, pagos=pagos, sugerencias=sugerencias, clientes=clientes, **conversion)
     
 
 @app.route("/proyectos/<int:id>/editar", methods=["GET", "POST"])
@@ -579,7 +924,11 @@ def editar_proyecto_ruta(id):
         if titulo == "" or cliente_id == "":
             return redirigir_o_responder_error("Título y cliente son obligatorios.", "editar_proyecto_ruta", id=id)
 
+        if fecha_entrega and fecha_entrega != fecha_entrega_anterior and fecha_entrega < date.today().isoformat():
+            return redirigir_o_responder_error("La fecha de entrega no puede ser anterior a hoy.", "editar_proyecto_ruta", id=id)
+
         editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, session["agencia_id"])
+        auditar("editar", "proyecto", id, f"Editó el proyecto '{titulo}'.")
 
         if fecha_entrega != fecha_entrega_anterior and proyecto_esta_por_vencer(estado, fecha_entrega):
             agencia = obtener_agencia_por_id(session["agencia_id"])
@@ -613,18 +962,54 @@ def editar_proyecto_ruta(id):
         return redirect(url_for("ver_proyectos"))
     else:
         return redirect(url_for("ver_proyectos", editar=id))
-        
-@app.route("/proyectos/<int:id>/eliminar", methods=["POST"])
+
+
+@app.route("/proyectos/<int:id>/marcar-completado", methods=["POST"])
 @login_requerido
+def marcar_proyecto_completado_ruta(id):
+    proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
+    if proyecto is None:
+        return redirigir_o_responder_error("Proyecto no encontrado.", "ver_proyectos")
+
+    if proyecto[3] != "Completado":
+        marcar_proyecto_completado(id, session["agencia_id"])
+        auditar("editar", "proyecto", id, f"Marcó como completado el proyecto '{proyecto[1]}'.")
+
+        cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
+        agencia = obtener_agencia_por_id(session["agencia_id"])
+        if cliente and cliente[2] and agencia[3] and agencia[4]:
+            try:
+                enviar_correo(
+                    cliente[2],
+                    f"Proyecto completado: {proyecto[1]}",
+                    f"Hola {cliente[1]},\n\nTu proyecto '{proyecto[1]}' ha sido marcado como completado.\n\nSaludos.",
+                    agencia[3],
+                    agencia[4]
+                )
+            except Exception as error:
+                print(f"No se pudo enviar el correo: {error}")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Proyecto marcado como completado.", "exito")
+    return redirect(request.referrer or url_for("ver_proyectos"))
+
+
+@app.route("/proyectos/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
 def eliminar_proyecto_ruta(id):
+    proyecto = obtener_proyecto_por_id(id, session["agencia_id"])
     eliminar_proyecto_por_id(id, session["agencia_id"])
+    auditar("eliminar", "proyecto", id, f"Eliminó el proyecto '{proyecto[1] if proyecto else id}'.")
     flash("Proyecto eliminado.", "exito")
     return redirect(url_for("ver_proyectos"))
 
 @app.route("/pagos")
 @login_requerido
 def ver_pagos():
-    pagos = obtener_pagos(session["agencia_id"])
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    pagos, total = obtener_pagos_paginado(session["agencia_id"], pagina, POR_PAGINA)
     lista = []
     for pago in pagos:
         proyecto = obtener_proyecto_por_id(pago[1], session["agencia_id"])
@@ -633,7 +1018,12 @@ def ver_pagos():
         else:
             titulo_proyecto = proyecto[1]
         lista.append((pago, titulo_proyecto))
-    return render_template("pagos.html", pagos=lista)
+    proyectos = obtener_proyectos(session["agencia_id"])
+    conversion = datos_conversion(session["agencia_id"])
+    return render_template(
+        "pagos.html", pagos=lista, proyectos=proyectos, **conversion,
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
         
         
 @app.route("/pagos/nuevo", methods=["GET", "POST"])
@@ -643,27 +1033,57 @@ def nuevo_pago():
         proyecto_id = request.form["proyecto_id"]
         monto = request.form["monto"]
         fecha = request.form["fecha"]
+        estado = request.form.get("estado", "cobrado")
+        if estado not in ("cobrado", "pendiente"):
+            estado = "cobrado"
 
         if proyecto_id == "" or monto == "":
-            flash("Proyecto y monto son obligatorios.", "error")
-            return redirect(url_for("nuevo_pago"))
+            return redirigir_o_responder_error("Proyecto y monto son obligatorios.", "nuevo_pago")
 
         try:
             monto = float(monto)
         except ValueError:
-            flash("El monto debe ser un número válido.", "error")
-            return redirect(url_for("nuevo_pago"))
+            return redirigir_o_responder_error("El monto debe ser un número válido.", "nuevo_pago")
 
-        agregar_pago(proyecto_id, monto, fecha, session["agencia_id"])
+        agregar_pago(proyecto_id, monto, fecha, session["agencia_id"], estado)
+        auditar("crear", "pago", None, f"Registró un pago de ${monto:,.2f} ({estado}).")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
 
         flash("Pago agregado correctamente.", "exito")
         return redirect(url_for("ver_pagos"))
 
     else:
-        proyectos = obtener_proyectos(session["agencia_id"])
-        return render_template("pago_form.html", pago=None, proyectos=proyectos)
+        return redirect(url_for("ver_pagos", nuevo=1))
     
     
+@app.route("/pagos/<int:id>/recibo")
+@login_requerido
+def recibo_pago(id):
+    pago = obtener_pago_por_id(id, session["agencia_id"])
+    if pago is None:
+        flash("Pago no encontrado.", "error")
+        return redirect(url_for("ver_pagos"))
+
+    proyecto = obtener_proyecto_por_id(pago[1], session["agencia_id"])
+    titulo_proyecto = proyecto[1] if proyecto else "Proyecto no encontrado"
+    nombre_cliente = "Cliente no encontrado"
+    if proyecto:
+        cliente = obtener_cliente_por_id(proyecto[2], session["agencia_id"])
+        if cliente:
+            nombre_cliente = cliente[1]
+
+    agencia = obtener_agencia_por_id(session["agencia_id"])
+    conversion = datos_conversion(session["agencia_id"])
+
+    buffer = generar_recibo_pdf(
+        pago, titulo_proyecto, nombre_cliente, agencia[1] if agencia else None,
+        conversion["moneda_actual"], conversion["simbolo_actual"], conversion["tasa_cambio"]
+    )
+    return send_file(buffer, as_attachment=True, download_name=f"recibo_pago_{id}.pdf", mimetype="application/pdf")
+
+
 @app.route("/pagos/<int:id>")
 @login_requerido
 def ver_pago(id):
@@ -678,7 +1098,9 @@ def ver_pago(id):
             titulo_proyecto = "Proyecto no encontrado"
         else:
             titulo_proyecto = proyecto[1]
-        return render_template("pago_detalle.html", pago=pago, titulo_proyecto=titulo_proyecto)
+        conversion = datos_conversion(session["agencia_id"])
+        proyectos = obtener_proyectos(session["agencia_id"])
+        return render_template("pago_detalle.html", pago=pago, titulo_proyecto=titulo_proyecto, proyectos=proyectos, **conversion)
     
 
 @app.route("/pagos/<int:id>/editar", methods=["GET", "POST"])
@@ -694,36 +1116,60 @@ def editar_pago_ruta(id):
         proyecto_id = request.form["proyecto_id"]
         monto = request.form["monto"]
         fecha = request.form["fecha"]
+        estado = request.form.get("estado", "cobrado")
+        if estado not in ("cobrado", "pendiente"):
+            estado = "cobrado"
 
         if proyecto_id == "" or monto == "":
-            flash("Proyecto y monto son obligatorios.", "error")
-            return redirect(url_for("editar_pago_ruta", id=id))
+            return redirigir_o_responder_error("Proyecto y monto son obligatorios.", "editar_pago_ruta", id=id)
 
         try:
             monto = float(monto)
         except ValueError:
-            flash("El monto debe ser un número válido.", "error")
-            return redirect(url_for("editar_pago_ruta", id=id))
+            return redirigir_o_responder_error("El monto debe ser un número válido.", "editar_pago_ruta", id=id)
 
-        editar_pago_por_id(id, proyecto_id, monto, fecha, session["agencia_id"])
+        editar_pago_por_id(id, proyecto_id, monto, fecha, session["agencia_id"], estado)
+        auditar("editar", "pago", id, f"Editó el pago #{id} (${monto:,.2f}, {estado}).")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Pago actualizado correctamente.", "exito")
         return redirect(url_for("ver_pago", id=id))
 
     else:
-        proyectos = obtener_proyectos(session["agencia_id"])
-        return render_template("pago_form.html", pago=pago, proyectos=proyectos)
+        return redirect(url_for("ver_pagos", editar=id))
         
 @app.route("/pagos/<int:id>/eliminar", methods=["POST"])
-@login_requerido
+@admin_requerido
 def eliminar_pago_ruta(id):
+    pago = obtener_pago_por_id(id, session["agencia_id"])
     eliminar_pago_por_id(id, session["agencia_id"])
+    auditar("eliminar", "pago", id, f"Eliminó el pago #{id}" + (f" (${pago[2]:,.2f})." if pago else "."))
     flash("Pago eliminado.", "exito")
     return redirect(url_for("ver_pagos"))
+
+@app.route("/pagos/<int:id>/marcar-cobrado", methods=["POST"])
+@login_requerido
+def marcar_pago_cobrado_ruta(id):
+    pago = obtener_pago_por_id(id, session["agencia_id"])
+    if pago is None:
+        return redirigir_o_responder_error("Pago no encontrado.", "ver_pagos")
+
+    marcar_pago_cobrado(id, session["agencia_id"])
+    auditar("editar", "pago", id, f"Marcó como cobrado el pago #{id} (${pago[2]:,.2f}).")
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True})
+
+    flash("Pago marcado como cobrado.", "exito")
+    return redirect(request.referrer or url_for("ver_pagos"))
 
 @app.route("/notas")
 @login_requerido
 def ver_notas():
-    notas = obtener_notas(session["agencia_id"])
+    pagina = normalizar_pagina(request.args.get("pagina"))
+    notas, total = obtener_notas_paginado(session["agencia_id"], pagina, POR_PAGINA)
     lista = []
     for nota in notas:
         cliente = obtener_cliente_por_id(nota[1], session["agencia_id"])
@@ -732,8 +1178,12 @@ def ver_notas():
         else:
             nombre_cliente = cliente[1]
         lista.append((nota, nombre_cliente))
-    return render_template("notas.html", notas=lista)
-        
+    clientes = obtener_clientes(session["agencia_id"])
+    return render_template(
+        "notas.html", notas=lista, clientes=clientes, fecha_hoy=date.today().isoformat(),
+        pagina=pagina, total_paginas=total_paginas(total, POR_PAGINA), total_registros=total
+    )
+
 
 @app.route("/notas/nuevo", methods=["GET", "POST"])
 @login_requerido
@@ -742,27 +1192,38 @@ def nueva_nota():
         cliente_id = request.form["cliente_id"]
         contenido = request.form["contenido"]
         fecha = request.form["fecha"]
-        
+
         if cliente_id == "" or contenido == "":
-            flash("Cliente y contenido son obligatorios.", "error")
-            return redirect(url_for("nueva_nota"))
+            return redirigir_o_responder_error("Cliente y contenido son obligatorios.", "nueva_nota")
 
         agregar_nota(cliente_id, contenido, fecha, session["agencia_id"])
-        
+        auditar("crear", "nota", None, "Agregó una nota.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Nota agregada correctamente.", "exito")
         return redirect(url_for("ver_notas"))
-        
+
     else:
-        clientes = obtener_clientes(session["agencia_id"])
-        return render_template("nota_form.html", nota=None, clientes=clientes, fecha_hoy=date.today().isoformat())
-    
+        return redirect(url_for("ver_notas", nuevo=1))
+
 @app.route("/notas/generar-ia", methods=["POST"])
 @login_requerido
 def generar_nota_ia():
     cliente_id = request.form["cliente_id"]
     palabras_clave = request.form["palabras_clave"]
 
-    borrador_ia = redactar_nota(palabras_clave)
+    try:
+        borrador_ia = redactar_nota(palabras_clave)
+    except Exception:
+        if es_peticion_ajax():
+            return jsonify({"exito": False, "error": "No se pudo generar el borrador. Probá de nuevo."}), 400
+        flash("No se pudo generar el borrador en este momento. Probá de nuevo en un rato.", "error")
+        return redirect(url_for("ver_notas"))
+
+    if es_peticion_ajax():
+        return jsonify({"exito": True, "borrador": borrador_ia})
 
     clientes = obtener_clientes(session["agencia_id"])
     return render_template("nota_form.html", nota=None, clientes=clientes, borrador_ia=borrador_ia, cliente_id_seleccionado=cliente_id, fecha_hoy=date.today().isoformat())
@@ -782,7 +1243,8 @@ def ver_nota(id):
             nombre_cliente = "Cliente no encontrado"
         else:
             nombre_cliente = cliente[1]
-        return render_template("nota_detalle.html", nota=nota, nombre_cliente=nombre_cliente)
+        clientes = obtener_clientes(session["agencia_id"])
+        return render_template("nota_detalle.html", nota=nota, nombre_cliente=nombre_cliente, clientes=clientes)
     
 @app.route("/notas/<int:id>/editar", methods=["GET", "POST"])
 @login_requerido
@@ -799,22 +1261,25 @@ def editar_nota_ruta(id):
         fecha = request.form["fecha"]
         
         if cliente_id == "" or contenido == "":
-            flash("Cliente y contenido son obligatorios.", "error")
-            return redirect(url_for("editar_nota_ruta", id=id))
+            return redirigir_o_responder_error("Cliente y contenido son obligatorios.", "editar_nota_ruta", id=id)
 
         editar_nota_por_id(id, cliente_id, contenido, fecha, session["agencia_id"])
-        
+        auditar("editar", "nota", id, f"Editó la nota #{id}.")
+
+        if es_peticion_ajax():
+            return jsonify({"exito": True})
+
         flash("Nota actualizada correctamente.", "exito")
         return redirect(url_for("ver_notas"))
-        
+
     else:
-        clientes = obtener_clientes(session["agencia_id"])
-        return render_template("nota_form.html", nota=nota, clientes=clientes)
+        return redirect(url_for("ver_notas", editar=id))
         
 @app.route("/notas/<int:id>/eliminar", methods=["POST"])
-@login_requerido
+@admin_requerido
 def eliminar_nota_ruta(id):
     eliminar_nota_por_id(id, session["agencia_id"])
+    auditar("eliminar", "nota", id, f"Eliminó la nota #{id}.")
     flash("Nota eliminada.", "exito")
     return redirect(url_for("ver_notas"))
 

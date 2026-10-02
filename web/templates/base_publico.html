@@ -17,27 +17,34 @@
 </head>
 <body>
     <div class="layout-publico">
-        <div class="panel-marca">
-            <div class="marca-contenido">
-                <div class="marca-logo">C</div>
-                <h1 class="marca-titulo">CRM Agencia</h1>
-                <p class="marca-tagline">Gestioná clientes, proyectos, pagos y notas en un solo lugar.</p>
+        <span class="forma-decorativa forma-decorativa-1" aria-hidden="true"></span>
+        <span class="forma-decorativa forma-decorativa-2" aria-hidden="true"></span>
+        <div class="tarjeta-publica">
+            <div class="panel-formulario">
+                <div class="contenido-publico">
+                    {% with mensajes = get_flashed_messages(with_categories=true) %}
+                        {% if mensajes %}
+                            <div class="flash-contenedor">
+                                {% for categoria, mensaje in mensajes %}
+                                    <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                    {% block content %}{% endblock %}
+                </div>
             </div>
-        </div>
-        <div class="panel-formulario">
-            <div class="tarjeta-publica">
-                {% with mensajes = get_flashed_messages(with_categories=true) %}
-                    {% if mensajes %}
-                        <div class="flash-contenedor">
-                            {% for categoria, mensaje in mensajes %}
-                                <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                {% endwith %}
-                {% block content %}{% endblock %}
+            <div class="panel-marca" aria-hidden="true">
+                <span class="panel-marca-forma panel-marca-forma-1"></span>
+                <span class="panel-marca-forma panel-marca-forma-2"></span>
+                <div class="marca-contenido">
+                    <span class="marca-logo-grande">C</span>
+                    <h2 class="marca-titulo">CRM Agencia</h2>
+                    <p class="marca-tagline">Gestioná clientes, proyectos, pagos y notas en un solo lugar.</p>
+                </div>
             </div>
         </div>
     </div>
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </body>
 </html>

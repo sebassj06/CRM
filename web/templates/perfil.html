@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}Mi perfil · CRM Agencia{% endblock %}
+
+{% block content %}
+    <div class="configuracion-contenedor">
+        <div class="encabezado-pagina encabezado-pagina-centrado">
+            <div>
+                <h1>Mi perfil</h1>
+                <p class="encabezado-descripcion">Editá tus datos personales y de acceso.</p>
+            </div>
+        </div>
+
+        <form method="POST" action="/perfil" enctype="multipart/form-data" class="formulario formulario-ancho">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="seccion-config">
+                <div class="seccion-config-encabezado">
+                    <div class="tarjeta-titulo">
+                        <span class="icono-chip icono-chip-sm icono-chip-clientes">{{ icono('usuario', tamano=16) }}</span>
+                        <h2>Datos personales</h2>
+                    </div>
+                </div>
+                <div class="campo">
+                    <label>Foto de perfil</label>
+                    <div class="foto-perfil-selector">
+                        {% if usuario[6] %}
+                            <img class="foto-perfil-preview" id="foto-perfil-preview" src="{{ url_for('static', filename=usuario[6]) }}" alt="">
+                        {% else %}
+                            <span class="foto-perfil-preview" id="foto-perfil-preview">{{ usuario[1][:2]|upper }}</span>
+                        {% endif %}
+                        <div>
+                            <label for="foto_perfil" class="btn btn-secundario btn-sm">{{ icono('subir', tamano=15) }} Cambiar foto</label>
+                            <input type="file" id="foto_perfil" name="foto_perfil" accept=".png,.jpg,.jpeg,.webp" class="visualmente-oculto">
+                            <p class="ayuda-campo">PNG, JPG o WEBP. Máximo 3 MB.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="campo">
+                    <label for="nombre_usuario">Nombre de usuario</label>
+                    <input type="text" id="nombre_usuario" name="nombre_usuario" value="{{ usuario[1] }}">
+                </div>
+            </div>
+
+            <div class="seccion-config">
+                <div class="seccion-config-encabezado">
+                    <div class="tarjeta-titulo">
+                        <span class="icono-chip icono-chip-sm icono-chip-pagos">{{ icono('correo', tamano=16) }}</span>
+                        <h2>Email</h2>
+                    </div>
+                    {% if usuario[5] %}
+                        <span class="badge badge-completado">Confirmado</span>
+                    {% else %}
+                        <span class="badge badge-pendiente">Sin configurar</span>
+                    {% endif %}
+                </div>
+                <p class="texto-secundario">Si lo cambiás, te mandamos un código a la nueva dirección para confirmarla antes de aplicar el cambio.</p>
+                <div class="campo">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" value="{{ usuario[5] or '' }}" placeholder="nombre@dominio.com">
+                </div>
+            </div>
+
+            <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+        </form>
+
+        {% if verificacion_pendiente %}
+        <div class="tarjeta tarjeta-ia">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-exito">{{ icono('check-circulo', tamano=16) }}</span>
+                <h2>Confirmá tu nuevo email</h2>
+            </div>
+            <p class="texto-secundario">Te enviamos un código a <strong>{{ verificacion_pendiente[2] }}</strong>. Ingresalo acá para confirmarlo (vence en 15 minutos).</p>
+            <form method="POST" action="/perfil/confirmar-email" class="formulario-codigo">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="codigo" inputmode="numeric" maxlength="6" placeholder="123456" autofocus>
+                <input type="submit" value="Confirmar código" data-cargando="Confirmando...">
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="seccion-config">
+            <div class="seccion-config-encabezado">
+                <div class="tarjeta-titulo">
+                    <span class="icono-chip icono-chip-sm icono-chip-notas">{{ icono('candado', tamano=16) }}</span>
+                    <h2>Contraseña</h2>
+                </div>
+            </div>
+            <form method="POST" action="/perfil/cambiar-password" class="formulario formulario-ancho">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="campo">
+                    <label for="contraseña_actual">Contraseña actual</label>
+                    <div class="input-con-boton">
+                        <input type="password" id="contraseña_actual" name="contraseña_actual" autocomplete="current-password">
+                        <button type="button" class="boton-ver-password" aria-label="Mostrar contraseña" aria-pressed="false">
+                            <span class="icono-ojo">{{ icono('ojo') }}</span>
+                            <span class="icono-ojo-cerrado">{{ icono('ojo-cerrado') }}</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="campo">
+                    <label for="contraseña_nueva">Nueva contraseña</label>
+                    <div class="input-con-boton">
+                        <input type="password" id="contraseña_nueva" name="contraseña_nueva" autocomplete="new-password">
+                        <button type="button" class="boton-ver-password" aria-label="Mostrar contraseña" aria-pressed="false">
+                            <span class="icono-ojo">{{ icono('ojo') }}</span>
+                            <span class="icono-ojo-cerrado">{{ icono('ojo-cerrado') }}</span>
+                        </button>
+                    </div>
+                    <p class="ayuda-campo">Mínimo 6 caracteres.</p>
+                </div>
+                <input type="submit" value="Cambiar contraseña" data-cargando="Cambiando...">
+            </form>
+        </div>
+    </div>
+{% endblock %}

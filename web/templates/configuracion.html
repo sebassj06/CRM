@@ -1,57 +1,100 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono %}
 
 {% block title %}Configuración · CRM Agencia{% endblock %}
 
 {% block content %}
-    <div class="encabezado-pagina">
-        <div>
-            <h1>Configuración</h1>
-            <p class="encabezado-descripcion">Conectá las automatizaciones de tu agencia.</p>
+    <div class="configuracion-contenedor">
+        <div class="encabezado-pagina encabezado-pagina-centrado">
+            <div>
+                <h1>Configuración</h1>
+                <p class="encabezado-descripcion">Conectá las automatizaciones de tu agencia.</p>
+            </div>
+        </div>
+
+        <form method="POST" class="formulario formulario-ancho">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="seccion-config">
+                <div class="seccion-config-encabezado">
+                    <div class="tarjeta-titulo">
+                        <span class="icono-chip icono-chip-sm icono-chip-notas">{{ icono('pagos', tamano=16) }}</span>
+                        <h2>Moneda</h2>
+                    </div>
+                </div>
+                <p class="texto-secundario">Los montos del CRM están en dólares. Elegí tu moneda local para verlos también convertidos.</p>
+                <div class="campo">
+                    <label for="moneda">Moneda local</label>
+                    <select id="moneda" name="moneda">
+                        {% for codigo, nombre, simbolo in monedas %}
+                            <option value="{{ codigo }}" {% if agencia[5] == codigo %}selected{% endif %}>{{ nombre }} ({{ codigo }})</option>
+                        {% endfor %}
+                    </select>
+                    <p class="ayuda-campo">La cotización se actualiza automáticamente contra el dólar.</p>
+                </div>
+            </div>
+
+            <div class="seccion-config">
+                <div class="seccion-config-encabezado">
+                    <div class="tarjeta-titulo">
+                        <span class="icono-chip icono-chip-sm icono-chip-clientes">{{ icono('mensaje', tamano=16) }}</span>
+                        <h2>Telegram</h2>
+                    </div>
+                    {% if agencia[2] %}
+                        <span class="badge badge-completado">Conectado</span>
+                    {% else %}
+                        <span class="badge badge-pendiente">No configurado</span>
+                    {% endif %}
+                </div>
+                <p class="texto-secundario">Avisa por Telegram cuando un proyecto está por vencer.</p>
+                <div class="campo">
+                    <label for="telegram_chat_id">Chat ID</label>
+                    <input type="text" id="telegram_chat_id" name="telegram_chat_id" value="{{ agencia[2] or '' }}">
+                    <p class="ayuda-campo">Escribile a <strong>@userinfobot</strong> en Telegram y te va a responder con tu Chat ID.</p>
+                </div>
+            </div>
+
+            <div class="seccion-config">
+                <div class="seccion-config-encabezado">
+                    <div class="tarjeta-titulo">
+                        <span class="icono-chip icono-chip-sm icono-chip-pagos">{{ icono('correo', tamano=16) }}</span>
+                        <h2>Gmail</h2>
+                    </div>
+                    {% if agencia[3] and agencia[4] %}
+                        <span class="badge badge-completado">Conectado</span>
+                    {% else %}
+                        <span class="badge badge-pendiente">No configurado</span>
+                    {% endif %}
+                </div>
+                <p class="texto-secundario">Envía correos a tus clientes directamente desde el CRM.</p>
+                <div class="campo">
+                    <label for="gmail_user">Usuario</label>
+                    <input type="text" id="gmail_user" name="gmail_user" value="{{ agencia[3] or '' }}">
+                    <p class="ayuda-campo">La dirección de Gmail completa desde la que se van a enviar los correos.</p>
+                </div>
+                <div class="campo">
+                    <label for="gmail_app_password">Contraseña de aplicación</label>
+                    <div class="input-con-boton">
+                        <input type="password" id="gmail_app_password" name="gmail_app_password" placeholder="{{ 'Dejá en blanco para no cambiarla' if agencia[4] else 'No configurada' }}">
+                        <button type="button" class="boton-ver-password" aria-label="Mostrar contraseña" aria-pressed="false">
+                            <span class="icono-ojo">{{ icono('ojo') }}</span>
+                            <span class="icono-ojo-cerrado">{{ icono('ojo-cerrado') }}</span>
+                        </button>
+                    </div>
+                    <p class="ayuda-campo">Necesitás la verificación en dos pasos activada en tu cuenta de Google. Generala en <strong>myaccount.google.com/apppasswords</strong> — no es tu contraseña normal de Gmail.</p>
+                </div>
+            </div>
+
+            <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
+        </form>
+
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-exito">{{ icono('descargar', tamano=16) }}</span>
+                <h2>Respaldo de datos</h2>
+            </div>
+            <p class="texto-secundario">Descargá un .zip con tus clientes, proyectos, pagos y notas en Excel.</p>
+            <a href="/configuracion/respaldo" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Descargar respaldo</a>
         </div>
     </div>
-
-    <form method="POST" class="formulario formulario-ancho">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <div class="seccion-config">
-            <div class="seccion-config-encabezado">
-                <h2>Telegram</h2>
-                {% if agencia[2] %}
-                    <span class="badge badge-completado">Conectado</span>
-                {% else %}
-                    <span class="badge badge-pendiente">No configurado</span>
-                {% endif %}
-            </div>
-            <p class="texto-secundario">Avisa por Telegram cuando un proyecto está por vencer.</p>
-            <div class="campo">
-                <label for="telegram_chat_id">Chat ID</label>
-                <input type="text" id="telegram_chat_id" name="telegram_chat_id" value="{{ agencia[2] or '' }}">
-                <p class="ayuda-campo">Escribile a <strong>@userinfobot</strong> en Telegram y te va a responder con tu Chat ID.</p>
-            </div>
-        </div>
-
-        <div class="seccion-config">
-            <div class="seccion-config-encabezado">
-                <h2>Gmail</h2>
-                {% if agencia[3] and agencia[4] %}
-                    <span class="badge badge-completado">Conectado</span>
-                {% else %}
-                    <span class="badge badge-pendiente">No configurado</span>
-                {% endif %}
-            </div>
-            <p class="texto-secundario">Envía correos a tus clientes directamente desde el CRM.</p>
-            <div class="campo">
-                <label for="gmail_user">Usuario</label>
-                <input type="text" id="gmail_user" name="gmail_user" value="{{ agencia[3] or '' }}">
-                <p class="ayuda-campo">La dirección de Gmail completa desde la que se van a enviar los correos.</p>
-            </div>
-            <div class="campo">
-                <label for="gmail_app_password">Contraseña de aplicación</label>
-                <input type="password" id="gmail_app_password" name="gmail_app_password" placeholder="{{ 'Dejá en blanco para no cambiarla' if agencia[4] else 'No configurada' }}">
-                <p class="ayuda-campo">Necesitás la verificación en dos pasos activada en tu cuenta de Google. Generala en <strong>myaccount.google.com/apppasswords</strong> — no es tu contraseña normal de Gmail.</p>
-            </div>
-        </div>
-
-        <input type="submit" value="Guardar cambios" data-cargando="Guardando...">
-    </form>
 {% endblock %}

@@ -1,28 +1,77 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% from "_iconos.html" import icono %} {% block title
+%}Importar clientes · CRM Agencia{% endblock %} {% block content %}
+<a href="/clientes" class="enlace-volver"
+  >{{ icono('flecha-izquierda', tamano=16) }} Volver a clientes</a
+>
 
-{% block title %}Importar clientes · CRM Agencia{% endblock %}
-
-{% block content %}
+<div class="encabezado-pagina">
+  <div>
     <h1>Importar clientes</h1>
+    <p class="encabezado-descripcion">
+      Subí un archivo CSV o Excel para cargar varios clientes de una vez.
+    </p>
+  </div>
+</div>
 
-    <div class="tarjeta">
-        <p>Subí un archivo <strong>.csv</strong> o <strong>.xlsx</strong> (Excel) con estas columnas en la primera fila (el orden no importa, pero los nombres de columna sí deben ser exactos):</p>
-        <p><code>nombre,email,telefono,empresa,notas,cliente_desde</code></p>
-        <p><code>nombre</code> y <code>email</code> son obligatorios; el resto puede ir vacío. <code>cliente_desde</code> es opcional (fecha desde la que trabajás con ese cliente).</p>
-        <p>Si un cliente del archivo ya existe en tu agencia (mismo email), esa fila se omite y no se duplica.</p>
-        <p>¿No tenés el archivo listo? <a href="/clientes/importar/plantilla">Descargá la plantilla en Excel</a>, completala como una planilla normal, y subila acá.</p>
-    </div>
+<div class="tarjeta">
+  <div class="tarjeta-titulo">
+    <span class="icono-chip icono-chip-sm icono-chip-clientes"
+      >{{ icono('lista', tamano=16) }}</span
+    >
+    <h2>Formato del archivo</h2>
+  </div>
+  <p>
+    Subí un archivo <strong>.csv</strong> o <strong>.xlsx</strong> (Excel) con
+    estas columnas en la primera fila (el orden no importa, pero los nombres de
+    columna sí deben ser exactos):
+  </p>
+  <ul>
+    <li>Nombre</li>
+    <li>Email</li>
+    <li>Telefono</li>
+    <li>Empresa</li>
+    <li>Notas</li>
+    <li>cliente_desde</li>
+  </ul>
+  <p>
+    <span>nombre y email</span> son obligatorios; el resto puede ir vacío.
+    <span>*cliente_desde*</span> es opcional (fecha desde la que trabajás con
+    ese cliente).
+  </p>
+  <p>
+    Si un cliente del archivo ya existe en tu agencia (mismo email), esa fila se
+    omite y no se duplica.
+  </p>
+  <p>
+    ¿No tenés el archivo listo?
+    <a href="/clientes/importar/plantilla">Descargá la plantilla en Excel</a>,
+    completala como una planilla normal, y subila acá.
+  </p>
+</div>
 
-    <form method="POST" enctype="multipart/form-data" class="formulario">
-        <div class="campo">
-            <label for="archivo_csv">Archivo (.csv o .xlsx)</label>
-            <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv,.xlsx">
-        </div>
-        <input type="submit" value="Importar">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    </form>
-
-    <div class="acciones">
-        <a href="/clientes">← Volver a clientes</a>
-    </div>
+<form
+  method="POST"
+  enctype="multipart/form-data"
+  class="formulario formulario-archivo"
+>
+  <label for="archivo_csv" class="zona-archivo" id="zona-archivo">
+    <span class="zona-archivo-icono">{{ icono('subir', tamano=22) }}</span>
+    <span class="zona-archivo-texto">
+      <strong>Hacé clic para elegir un archivo</strong>
+      <span>o arrastralo acá — .csv o .xlsx</span>
+    </span>
+    <span class="zona-archivo-nombre" id="zona-archivo-nombre" hidden></span>
+    <input
+      type="file"
+      id="archivo_csv"
+      name="archivo_csv"
+      accept=".csv,.xlsx"
+      class="visualmente-oculto"
+    />
+  </label>
+  <div class="acciones-formulario-centro">
+    <input type="submit" value="Importar" data-cargando="Importando..." />
+  </div>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+</form>
 {% endblock %}

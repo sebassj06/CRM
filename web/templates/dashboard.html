@@ -1,61 +1,66 @@
 {% extends "base.html" %}
 {% from "_iconos.html" import icono %}
+{% from "_montos.html" import monto_convertido %}
 
 {% block title %}Panel · CRM Agencia{% endblock %}
 
 {% block content %}
-    <h1>Panel de estadísticas</h1>
-
-    {% set _cobrado_texto = "{:,.2f}".format(cobrado) %}
-    {% if _cobrado_texto.endswith('.00') %}
-        {% set _cobrado_texto = _cobrado_texto[:-3] %}
-    {% endif %}
-
-    {% set _completados = 0 %}
-    {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
-        {% if estado == 'Completado' %}
-            {% set _completados = cantidad %}
-        {% endif %}
-    {% endfor %}
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Panel de estadísticas</h1>
+            <p class="encabezado-descripcion">Un vistazo rápido al estado de tu agencia.</p>
+        </div>
+    </div>
 
     <div class="metricas">
-        <div class="metrica">
+        <a href="/clientes" class="metrica">
             <div class="metrica-encabezado">
+                <span class="icono-chip icono-chip-clientes">{{ icono('clientes', tamano=19) }}</span>
                 <span class="metrica-etiqueta">Clientes</span>
-                {{ icono('clientes', clase='metrica-icono') }}
+                {{ icono('flecha-derecha', clase='metrica-flecha', tamano=16) }}
             </div>
             <div class="metrica-numero">{{ total_clientes }}</div>
             <div class="metrica-descripcion">Clientes registrados</div>
-        </div>
-        <div class="metrica">
+        </a>
+        <a href="/proyectos" class="metrica">
             <div class="metrica-encabezado">
+                <span class="icono-chip icono-chip-proyectos">{{ icono('proyectos', tamano=19) }}</span>
                 <span class="metrica-etiqueta">Proyectos</span>
-                {{ icono('proyectos', clase='metrica-icono') }}
+                {{ icono('flecha-derecha', clase='metrica-flecha', tamano=16) }}
             </div>
             <div class="metrica-numero">{{ total_proyectos }}</div>
-            <div class="metrica-descripcion">Proyectos</div>
-        </div>
-        <div class="metrica">
+            <div class="metrica-descripcion">Proyectos en total</div>
+        </a>
+        <a href="/pagos" class="metrica">
             <div class="metrica-encabezado">
-                <span class="metrica-etiqueta">Pagos registrados</span>
-                {{ icono('lista', clase='metrica-icono') }}
+                <span class="icono-chip icono-chip-pagos">{{ icono('lista', tamano=19) }}</span>
+                <span class="metrica-etiqueta">Pagos</span>
+                {{ icono('flecha-derecha', clase='metrica-flecha', tamano=16) }}
             </div>
             <div class="metrica-numero">{{ total_pagos }}</div>
             <div class="metrica-descripcion">Pagos registrados</div>
-        </div>
-        <div class="metrica">
+        </a>
+        <a href="/pagos" class="metrica">
             <div class="metrica-encabezado">
-                <span class="metrica-etiqueta">Total cobrado</span>
-                {{ icono('pagos', clase='metrica-icono') }}
+                <span class="icono-chip icono-chip-pagos">{{ icono('pagos', tamano=19) }}</span>
+                <span class="metrica-etiqueta">Ingresos</span>
+                {{ icono('flecha-derecha', clase='metrica-flecha', tamano=16) }}
             </div>
-            <div class="metrica-numero">${{ _cobrado_texto }}</div>
-            <div class="metrica-descripcion">Total cobrado</div>
-        </div>
+            <div class="metrica-numero">${{ cobrado | monto }}</div>
+            {% if moneda_actual and moneda_actual != 'USD' and tasa_cambio %}
+                <div class="metrica-descripcion">{{ monto_convertido(cobrado, moneda_actual, simbolo_actual, tasa_cambio, clase='') }}</div>
+            {% else %}
+                <div class="metrica-descripcion">Total cobrado</div>
+            {% endif %}
+        </a>
     </div>
 
     <div class="paneles-secundarios">
         <div class="tarjeta">
-            <h2>Proyectos por estado</h2>
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-proyectos">{{ icono('proyectos', tamano=16) }}</span>
+                <h2>Proyectos por estado</h2>
+            </div>
             {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
             {% if estados_con_porcentaje %}
                 {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
@@ -70,18 +75,41 @@
         </div>
 
         <div class="tarjeta">
-            <h2>Proyectos completados</h2>
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-exito">{{ icono('check-circulo', tamano=16) }}</span>
+                <h2>Proyectos completados</h2>
+            </div>
             <div class="anillo-porcentaje" style="--porcentaje: {{ porcentaje_completado }}%;">
                 <div class="anillo-hueco">{{ porcentaje_completado }}%</div>
             </div>
-            <p class="anillo-contexto">{{ _completados }} de {{ total_proyectos }} proyectos completados</p>
+            <p class="anillo-contexto">{{ completados }} de {{ total_proyectos }} proyectos completados</p>
         </div>
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo">
+            <span class="icono-chip icono-chip-sm icono-chip-pagos">{{ icono('grafico', tamano=16) }}</span>
+            <h2>Ingresos de los últimos 6 meses</h2>
+        </div>
+        {% if hay_ingresos_mensuales %}
+            <div class="grafico-ingresos-barras">
+                {% for etiqueta, valor in ingresos_mensuales %}
+                    <div class="grafico-ingresos-columna">
+                        <div class="grafico-ingresos-valor">{% if valor > 0 %}${{ valor | monto }}{% endif %}</div>
+                        <div class="grafico-ingresos-barra" style="height: {{ ((valor / max_ingreso_mensual) * 100)|round(1) }}%;" title="{{ etiqueta }}: ${{ valor | monto }}"></div>
+                        <div class="grafico-ingresos-etiqueta">{{ etiqueta }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="texto-vacio">Todavía no hay pagos registrados para graficar.</p>
+        {% endif %}
     </div>
 
     <div class="tarjeta tarjeta-ia">
         <div class="tarjeta-ia-fila">
             <div class="tarjeta-ia-encabezado">
-                {{ icono('ia-destello', clase='tarjeta-ia-icono') }}
+                <span class="icono-chip icono-chip-clientes">{{ icono('ia-destello', tamano=19) }}</span>
                 <div>
                     <h2>Resumen ejecutivo</h2>
                     <p class="tarjeta-ia-descripcion">Generá una visión general del rendimiento de tu agencia con IA.</p>
@@ -98,5 +126,94 @@
                 {{ resumen | markdown | safe }}
             </div>
         {% endif %}
+    </div>
+
+    <div class="paneles-terciarios">
+        <div class="tarjeta">
+            <div class="tarjeta-titulo-con-enlace">
+                <div class="tarjeta-titulo">
+                    <span class="icono-chip icono-chip-sm icono-chip-proyectos">{{ icono('proyectos', tamano=16) }}</span>
+                    <h2>Proyectos recientes</h2>
+                </div>
+                <a href="/proyectos" class="enlace-ver-todos">Ver todos {{ icono('flecha-derecha', tamano=14) }}</a>
+            </div>
+            {% if proyectos_recientes %}
+                <ul class="lista-proyectos">
+                    {% for proyecto, nombre_cliente, clase_badge in proyectos_recientes %}
+                        <li class="proyecto-item">
+                            <div>
+                                <a href="/proyectos/{{ proyecto[0] }}" class="proyecto-titulo">{{ proyecto[1] }}</a>
+                                <div class="texto-secundario">{{ nombre_cliente }}</div>
+                            </div>
+                            <span class="badge {{ clase_badge }}">{{ proyecto[3] }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="texto-vacio">Todavía no creaste ningún proyecto.</p>
+            {% endif %}
+        </div>
+
+        <div class="tarjeta">
+            <div class="tarjeta-titulo-con-enlace">
+                <div class="tarjeta-titulo">
+                    <span class="icono-chip icono-chip-sm icono-chip-pagos">{{ icono('pagos', tamano=16) }}</span>
+                    <h2>Próximos pagos</h2>
+                </div>
+                <a href="/pagos" class="enlace-ver-todos">Ver todos {{ icono('flecha-derecha', tamano=14) }}</a>
+            </div>
+            {% if pagos_proximos %}
+                <ul class="lista-registros">
+                    {% for pago, titulo_proyecto in pagos_proximos %}
+                        <li class="registro-item">
+                            <div>
+                                <span class="registro-monto">${{ pago[2] | monto }}</span>
+                                {{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}
+                                <div class="texto-secundario">{{ titulo_proyecto }}</div>
+                            </div>
+                            <form method="POST" action="/pagos/{{ pago[0] }}/marcar-cobrado" class="form-en-linea">
+                                <button type="submit" class="btn btn-secundario btn-sm">{{ icono('check-circulo', tamano=14) }} Cobrado</button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="texto-vacio">No tenés pagos pendientes de cobro.</p>
+            {% endif %}
+        </div>
+
+        <div class="tarjeta">
+            <div class="tarjeta-titulo">
+                <span class="icono-chip icono-chip-sm icono-chip-notas">{{ icono('mas', tamano=16) }}</span>
+                <h2>Accesos rápidos</h2>
+            </div>
+            <div class="lista-accesos-rapidos">
+                <a href="/clientes/nuevo" class="acceso-rapido-item">
+                    <span class="icono-chip icono-chip-clientes">{{ icono('clientes', tamano=18) }}</span>
+                    <span class="acceso-rapido-texto">
+                        <span class="acceso-rapido-titulo">Nuevo cliente</span>
+                        <span class="acceso-rapido-descripcion">Agregar un cliente al sistema</span>
+                    </span>
+                    {{ icono('flecha-derecha', clase='acceso-rapido-flecha', tamano=16) }}
+                </a>
+                <a href="/proyectos/nuevo" class="acceso-rapido-item">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('proyectos', tamano=18) }}</span>
+                    <span class="acceso-rapido-texto">
+                        <span class="acceso-rapido-titulo">Nuevo proyecto</span>
+                        <span class="acceso-rapido-descripcion">Crear un proyecto</span>
+                    </span>
+                    {{ icono('flecha-derecha', clase='acceso-rapido-flecha', tamano=16) }}
+                </a>
+                <a href="/pagos/nuevo" class="acceso-rapido-item">
+                    <span class="icono-chip icono-chip-pagos">{{ icono('pagos', tamano=18) }}</span>
+                    <span class="acceso-rapido-texto">
+                        <span class="acceso-rapido-titulo">Registrar pago</span>
+                        <span class="acceso-rapido-descripcion">Agregar un pago recibido</span>
+                    </span>
+                    {{ icono('flecha-derecha', clase='acceso-rapido-flecha', tamano=16) }}
+                </a>
+            </div>
+        </div>
     </div>
 {% endblock %}

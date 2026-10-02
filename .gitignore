@@ -4,3 +4,4 @@ __pycache__/
 crm.db
 respaldos/
 Claude outputs/
+web/static/uploads/

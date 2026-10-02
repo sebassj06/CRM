@@ -1,68 +1,193 @@
-{% extends "base.html" %}
-{% from "_iconos.html" import icono %}
+{% extends "base.html" %} {% from "_iconos.html" import icono %} {% from
+"_montos.html" import monto_convertido %} {% from "_paginacion.html" import
+controles_paginacion %} {% block title %}Pagos · CRM Agencia{% endblock %} {%
+block content %}
+<div class="encabezado-pagina">
+  <div>
+    <h1>Pagos</h1>
+    <p class="encabezado-descripcion">
+      Llevá el control de lo cobrado por cada proyecto.
+    </p>
+  </div>
+  <div class="encabezado-acciones">
+    <button type="button" class="btn btn-primario boton-nuevo-pago">
+      {{ icono('mas', tamano=16) }} Nuevo pago
+    </button>
+    <a href="/pagos/exportar" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Exportar</a>
+  </div>
+</div>
 
-{% block title %}Pagos · CRM Agencia{% endblock %}
+{% if pagos %}
+<div class="barra-busqueda">
+  {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
+  <input
+    type="search"
+    id="buscador-pagos"
+    placeholder="Buscar por proyecto..."
+    aria-label="Buscar pagos"
+  />
+</div>
 
-{% block content %}
-    <div class="encabezado-pagina">
+<table id="tabla-pagos">
+  <thead>
+    <tr>
+      <th>Proyecto</th>
+      <th>Monto</th>
+      <th>Estado</th>
+      <th>Fecha</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for pago, titulo_proyecto in pagos %}
+    <tr data-busqueda="{{ titulo_proyecto|lower }}">
+      <td data-label="Proyecto">
+        <a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a>
+      </td>
+      <td data-label="Monto" class="celda-monto">
+        ${{ pago[2] | monto }}
+        <div>{{ monto_convertido(pago[2], moneda_actual, simbolo_actual, tasa_cambio) }}</div>
+      </td>
+      <td data-label="Estado">
+        {% if pago[5] == 'pendiente' %}
+        <span class="badge badge-pendiente">Pendiente</span>
+        {% else %}
+        <span class="badge badge-completado">Cobrado</span>
+        {% endif %}
+      </td>
+      <td data-label="Fecha">{{ pago[3] }}</td>
+      <td data-label="Acciones">
+        <div class="acciones-fila">
+          {% if pago[5] == 'pendiente' %}
+          <form method="POST" action="/pagos/{{ pago[0] }}/marcar-cobrado" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario btn-sm btn-icono" data-tooltip="Marcar cobrado" aria-label="Marcar cobrado">{{ icono('check-circulo', tamano=15) }}<span class="texto-boton">Marcar cobrado</span></button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          </form>
+          {% endif %}
+          <button
+            type="button"
+            class="btn btn-secundario btn-sm btn-icono boton-editar-pago"
+            data-tooltip="Editar"
+            aria-label="Editar pago"
+            data-id="{{ pago[0] }}"
+            data-proyecto-id="{{ pago[1] }}"
+            data-monto="{{ pago[2] }}"
+            data-fecha="{{ pago[3] or '' }}"
+            data-estado="{{ pago[5] or 'cobrado' }}"
+          >
+            {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+          </button>
+          {% if rol_actual == 'admin' %}
+          <form
+            method="POST"
+            action="/pagos/{{ pago[0] }}/eliminar"
+            class="form-en-linea form-eliminar"
+            data-mensaje="¿Eliminar este pago de ${{ pago[2] | monto }}? Esta acción no se puede deshacer."
+          >
+            <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar pago">
+              {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+            </button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          </form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{{ controles_paginacion(pagina, total_paginas, '/pagos') }}
+
+<div id="estado-sin-resultados-pagos" class="tarjeta estado-vacio" hidden>
+  <h2>No encontramos coincidencias</h2>
+  <p>Probá con otro proyecto, o limpiá la búsqueda para ver todos tus pagos.</p>
+  <button
+    type="button"
+    id="boton-limpiar-busqueda-pagos"
+    class="btn btn-secundario"
+  >
+    Limpiar búsqueda
+  </button>
+</div>
+{% else %}
+<div class="tarjeta estado-vacio">
+  <h2>Aún no tenés pagos registrados</h2>
+  <p>
+    Registrá un pago para empezar a llevar el control de lo cobrado por
+    proyecto.
+  </p>
+  <button type="button" class="btn btn-primario boton-nuevo-pago">
+    {{ icono('mas', tamano=16) }} Agregar pago
+  </button>
+</div>
+{% endif %}
+
+<dialog id="modal-pago" class="modal">
+  <form method="POST" id="formulario-pago" class="formulario">
+    <div class="modal-encabezado">
+      <div class="modal-encabezado-info">
+        <span class="icono-chip icono-chip-pagos"
+          >{{ icono('pagos', tamano=19) }}</span
+        >
         <div>
-            <h1>Pagos</h1>
-            <p class="encabezado-descripcion">Llevá el control de lo cobrado por cada proyecto.</p>
+          <h2 id="modal-pago-titulo">Nuevo pago</h2>
         </div>
-        <div class="encabezado-acciones">
-            <a href="/pagos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Nuevo pago</a>
-        </div>
+      </div>
+      <button
+        type="button"
+        id="boton-cerrar-modal-pago"
+        class="btn-cerrar-modal"
+        aria-label="Cerrar"
+      >
+        {{ icono('cerrar', tamano=18) }}
+      </button>
     </div>
-
-    {% if pagos %}
-    <div class="barra-busqueda">
-        {{ icono('buscar', clase='barra-busqueda-icono', tamano=18) }}
-        <input type="search" id="buscador-pagos" placeholder="Buscar por proyecto..." aria-label="Buscar pagos">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div id="modal-pago-error" class="flash flash-error" role="alert" hidden></div>
+    <div class="modal-campos-grid">
+      <div class="campo campo-ancho">
+        <label for="modal-proyecto_id">Proyecto</label>
+        <select id="modal-proyecto_id" name="proyecto_id" autofocus>
+          {% for proyecto in proyectos %}
+          <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="modal-monto">Monto</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="modal-monto"
+          name="monto"
+          placeholder="0.00"
+        />
+      </div>
+      <div class="campo">
+        <label for="modal-fecha-pago">Fecha</label>
+        <input type="date" id="modal-fecha-pago" name="fecha" />
+      </div>
+      <div class="campo campo-ancho">
+        <label for="modal-estado-pago">Estado</label>
+        <select id="modal-estado-pago" name="estado">
+          <option value="cobrado">Cobrado</option>
+          <option value="pendiente">Pendiente</option>
+        </select>
+        <p class="ayuda-campo">"Pendiente" es un pago que esperás recibir — aparece en "Próximos pagos" del panel y no suma al total cobrado hasta que lo marqués como cobrado.</p>
+      </div>
     </div>
-
-    <table id="tabla-pagos">
-        <thead>
-            <tr>
-                <th>Proyecto</th>
-                <th>Monto</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pago, titulo_proyecto in pagos %}
-                {% set _monto_texto = "{:,.2f}".format(pago[2]) %}
-                {% if _monto_texto.endswith('.00') %}
-                    {% set _monto_texto = _monto_texto[:-3] %}
-                {% endif %}
-                <tr data-busqueda="{{ titulo_proyecto|lower }}">
-                    <td data-label="Proyecto"><a href="/pagos/{{ pago[0] }}">{{ titulo_proyecto }}</a></td>
-                    <td data-label="Monto" class="celda-monto">${{ _monto_texto }}</td>
-                    <td data-label="Fecha">{{ pago[3] }}</td>
-                    <td data-label="Acciones">
-                        <div class="acciones-fila">
-                            <a href="/pagos/{{ pago[0] }}/editar" class="btn btn-secundario btn-sm">{{ icono('editar', tamano=15) }} Editar</a>
-                            <form method="POST" action="/pagos/{{ pago[0] }}/eliminar" class="form-en-linea" onsubmit="return confirm('¿Eliminar este pago de ${{ _monto_texto }}? Esta acción no se puede deshacer.')">
-                                <button type="submit" class="btn btn-peligro btn-sm">{{ icono('eliminar', tamano=15) }} Eliminar</button>
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div id="estado-sin-resultados-pagos" class="tarjeta estado-vacio" hidden>
-        <h2>No encontramos coincidencias</h2>
-        <p>Probá con otro proyecto, o limpiá la búsqueda para ver todos tus pagos.</p>
-        <button type="button" id="boton-limpiar-busqueda-pagos" class="btn btn-secundario">Limpiar búsqueda</button>
+    <div class="acciones-formulario">
+      <button
+        type="button"
+        id="boton-cancelar-modal-pago"
+        class="btn btn-secundario"
+      >
+        Cancelar
+      </button>
+      <input type="submit" value="Guardar" data-cargando="Guardando..." />
     </div>
-    {% else %}
-    <div class="tarjeta estado-vacio">
-        <h2>Aún no tenés pagos registrados</h2>
-        <p>Registrá un pago para empezar a llevar el control de lo cobrado por proyecto.</p>
-        <a href="/pagos/nuevo" class="btn btn-primario">{{ icono('mas', tamano=16) }} Agregar pago</a>
-    </div>
-    {% endif %}
+  </form>
+</dialog>
 {% endblock %}
