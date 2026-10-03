@@ -8,15 +8,6 @@ def agregar_nota(cliente_id, contenido, fecha, agencia_id):
     conexion.commit()
     conexion.close()
 
-def mostrar_notas():
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM notas")
-    resultados = cursor.fetchall()
-    conexion.close()
-    for notas in resultados:
-        print(f"id: {notas[0]}, cliente_id: {notas[1]}, contenido: {notas[2]}, fecha: {notas[3]}")
-
 def notas_de_cliente(cliente_id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()

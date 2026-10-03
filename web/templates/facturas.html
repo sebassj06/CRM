@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% from "_paginacion.html" import controles_paginacion %}
+
+{% block title %}Facturas · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_estado = {'Borrador': 'badge-pendiente', 'Emitida': 'badge-progreso', 'Pagada': 'badge-completado', 'Anulada': 'badge-alta'} %}
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Facturas</h1>
+            <p class="encabezado-descripcion">Emití facturas por proyecto y llevá el control de cuánto se pagó de cada una.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <button type="button" class="btn btn-primario boton-nueva-factura">{{ icono('mas', tamano=16) }} Nueva factura</button>
+        </div>
+    </div>
+
+    {% if facturas %}
+    <table id="tabla-facturas">
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Proyecto</th>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Saldo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura, total, saldo, vencida, items_json in facturas %}
+            <tr>
+                <td data-label="N°"><a href="/facturas/{{ factura[0] }}">{{ "F-%04d"|format(factura[2]) }}</a></td>
+                <td data-label="Proyecto">{{ factura[12] }}</td>
+                <td data-label="Cliente">{{ factura[13] }}</td>
+                <td data-label="Estado">
+                    <span class="badge {{ clases_estado.get(factura[3], 'badge-pendiente') }}">{{ factura[3] }}</span>
+                    {% if vencida %}<span class="etiqueta-vencida">{{ icono('reloj', tamano=13) }} Vencida</span>{% endif %}
+                </td>
+                <td data-label="Total" class="celda-monto">${{ total | monto }}</td>
+                <td data-label="Saldo" class="celda-monto">${{ saldo | monto }}</td>
+                <td data-label="Acciones">
+                    <div class="acciones-fila">
+                        <button
+                            type="button"
+                            class="btn btn-secundario btn-sm btn-icono boton-editar-factura"
+                            data-tooltip="Editar" aria-label="Editar factura"
+                            data-id="{{ factura[0] }}"
+                            data-proyecto-id="{{ factura[1] }}"
+                            data-descuento="{{ factura[4] }}"
+                            data-impuesto="{{ factura[5] }}"
+                            data-fecha-emision="{{ factura[6] or '' }}"
+                            data-fecha-vencimiento="{{ factura[7] or '' }}"
+                            data-notas="{{ factura[8] or '' }}"
+                            data-items='{{ items_json | tojson }}'
+                            data-redirigir-a="/facturas/{{ factura[0] }}"
+                        >
+                            {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                        </button>
+                        {% if rol_actual == 'admin' %}
+                        <form
+                            method="POST"
+                            action="/facturas/{{ factura[0] }}/eliminar"
+                            class="form-en-linea form-eliminar"
+                            data-mensaje="¿Eliminar la factura {{ 'F-%04d'|format(factura[2]) }}? Esta acción no se puede deshacer."
+                        >
+                            <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar factura">
+                                {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                            </button>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {{ controles_paginacion(pagina, total_paginas, '/facturas') }}
+    {% else %}
+    <div class="tarjeta estado-vacio">
+        <h2>Aún no tenés facturas</h2>
+        <p>Emití tu primera factura para un proyecto y llevá el control de lo cobrado contra ella.</p>
+        <button type="button" class="btn btn-primario boton-nueva-factura">{{ icono('mas', tamano=16) }} Crear factura</button>
+    </div>
+    {% endif %}
+
+    {% include "_modal_factura.html" %}
+{% endblock %}

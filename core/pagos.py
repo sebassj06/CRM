@@ -1,27 +1,46 @@
 from datetime import date
 from core.database import obtener_conexion
 
-def agregar_pago(proyecto_id, monto, fecha, agencia_id, estado="cobrado"):
+def agregar_pago(proyecto_id, monto, fecha, agencia_id, estado="cobrado", factura_id=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO pagos (proyecto_id, monto, fecha, agencia_id, estado) VALUES (%s, %s, %s, %s, %s)",
-                   (proyecto_id, monto, fecha, agencia_id, estado))
+    cursor.execute("INSERT INTO pagos (proyecto_id, monto, fecha, agencia_id, estado, factura_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                   (proyecto_id, monto, fecha, agencia_id, estado, factura_id))
     conexion.commit()
     conexion.close()
 
-def mostrar_pagos():
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM pagos")
-    resultados = cursor.fetchall()
-    conexion.close()
-    for pagos in resultados:
-        print(f"id: {pagos[0]}, proyecto_id: {pagos[1]}, monto: {pagos[2]}, fecha: {pagos[3]}")
 
 def pagos_de_proyecto(proyecto_id, agencia_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute("SELECT * FROM pagos WHERE proyecto_id = %s AND agencia_id = %s", (proyecto_id, agencia_id))
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
+
+def pagos_de_cliente(cliente_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        """SELECT pagos.*, proyectos.titulo FROM pagos
+           JOIN proyectos ON proyectos.id = pagos.proyecto_id
+           WHERE proyectos.cliente_id = %s AND proyectos.agencia_id = %s AND pagos.agencia_id = %s
+           ORDER BY pagos.fecha DESC""",
+        (cliente_id, agencia_id, agencia_id)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
+
+def pagos_de_factura(factura_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT * FROM pagos WHERE factura_id = %s AND agencia_id = %s ORDER BY fecha DESC",
+        (factura_id, agencia_id)
+    )
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
@@ -88,11 +107,11 @@ def obtener_pago_por_id(id, agencia_id):
     conexion.close()
     return resultado
 
-def editar_pago_por_id(id, proyecto_id, monto, fecha, agencia_id, estado="cobrado"):
+def editar_pago_por_id(id, proyecto_id, monto, fecha, agencia_id, estado="cobrado", factura_id=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE pagos SET proyecto_id = %s, monto = %s, fecha = %s, estado = %s WHERE id = %s AND agencia_id = %s",
-                   (proyecto_id, monto, fecha, estado, id, agencia_id)
+    cursor.execute("UPDATE pagos SET proyecto_id = %s, monto = %s, fecha = %s, estado = %s, factura_id = %s WHERE id = %s AND agencia_id = %s",
+                   (proyecto_id, monto, fecha, estado, factura_id, id, agencia_id)
     )
     conexion.commit()
     conexion.close()

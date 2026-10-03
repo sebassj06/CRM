@@ -1,0 +1,3 @@
+nombre,email,telefono,empresa,notas,cliente_desde
+QA_Import Minuscula 1,qa_import_min1@test.com,,Empresa QA,nota,
+QA_Import Minuscula 2,qa_import_min2@test.com,,,,

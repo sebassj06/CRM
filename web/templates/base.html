@@ -30,13 +30,16 @@
                 <a href="/cotizaciones" class="{{ 'activo' if request.path.startswith('/cotizacion') else '' }}">{{ icono('cotizaciones') }} Cotizaciones</a>
                 <a href="/proyectos" class="{{ 'activo' if request.path.startswith('/proyectos') else '' }}">{{ icono('proyectos') }} Proyectos</a>
                 <a href="/tareas" class="{{ 'activo' if request.path.startswith('/tareas') else '' }}">{{ icono('lista') }} Tareas</a>
+                <a href="/facturas" class="{{ 'activo' if request.path.startswith('/factura') else '' }}">{{ icono('facturas') }} Facturas</a>
                 <a href="/pagos" class="{{ 'activo' if request.path.startswith('/pagos') else '' }}">{{ icono('pagos') }} Pagos</a>
                 <a href="/gastos" class="{{ 'activo' if request.path.startswith('/gastos') else '' }}">{{ icono('gastos') }} Gastos</a>
                 <a href="/notas" class="{{ 'activo' if request.path.startswith('/notas') else '' }}">{{ icono('notas') }} Notas</a>
                 {% if rol_actual == 'admin' %}
                     <div class="sidebar-grupo-titulo">Sistema</div>
                     <a href="/usuarios" class="{{ 'activo' if request.path.startswith('/usuarios') else '' }}">{{ icono('usuario') }} Usuarios</a>
-                    <a href="/configuracion" class="{{ 'activo' if request.path.startswith('/configuracion') else '' }}">{{ icono('configuracion') }} Configuración</a>
+                    <a href="/configuracion/campos" class="{{ 'activo' if request.path.startswith('/configuracion/campos') else '' }}">{{ icono('configuracion') }} Campos personalizados</a>
+                    <a href="/configuracion/etapas" class="{{ 'activo' if request.path.startswith('/configuracion/etapas') else '' }}">{{ icono('configuracion') }} Etapas</a>
+                    <a href="/configuracion" class="{{ 'activo' if request.path == '/configuracion' else '' }}">{{ icono('configuracion') }} Configuración</a>
                 {% endif %}
             </nav>
         </aside>

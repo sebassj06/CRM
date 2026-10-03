@@ -74,6 +74,7 @@ block content %}
             data-monto="{{ pago[2] }}"
             data-fecha="{{ pago[3] or '' }}"
             data-estado="{{ pago[5] or 'cobrado' }}"
+            data-factura-id="{{ pago[6] or '' }}"
           >
             {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
           </button>
@@ -153,6 +154,16 @@ block content %}
           <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
           {% endfor %}
         </select>
+      </div>
+      <div class="campo campo-ancho">
+        <label for="modal-factura_id">Factura (opcional)</label>
+        <select id="modal-factura_id" name="factura_id">
+          <option value="">Sin factura</option>
+          {% for factura in facturas %}
+          <option value="{{ factura[0] }}" data-proyecto-id="{{ factura[1] }}">{{ "F-%04d"|format(factura[2]) }}</option>
+          {% endfor %}
+        </select>
+        <p class="ayuda-campo">Si este pago es contra una factura emitida, elegila acá — cuando el total pagado cubra la factura, se marca sola como "Pagada".</p>
       </div>
       <div class="campo">
         <label for="modal-monto">Monto</label>

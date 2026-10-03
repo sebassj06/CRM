@@ -881,6 +881,7 @@ p {
 
 .formulario-archivo {
   max-width: none;
+  box-shadow: 0px 1px 5px #121113;
 }
 
 .zona-archivo {
@@ -891,7 +892,7 @@ p {
   max-width: 420px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-5);
-  border: 2px dashed var(--color-border);
+  border: 2px dashed var(--color-accent);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg);
   text-align: center;
@@ -1463,6 +1464,7 @@ tbody td:first-child a:hover {
   box-shadow: var(--shadow);
   padding: var(--space-5);
   margin-bottom: var(--space-5);
+  box-shadow: 0px 1px 5px #121113;
 }
 
 .tarjeta h2 {
@@ -1739,7 +1741,12 @@ a.registro-monto:hover {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  max-width: 560px;
+  max-width: 760px;
+  flex-wrap: wrap;
+}
+
+.barra-busqueda-con-filtro .menu-columnas {
+  flex-shrink: 0;
 }
 
 .barra-busqueda-con-filtro input[type="search"] {
@@ -2271,6 +2278,7 @@ dialog.modal .acciones-formulario input[type="submit"] {
   padding: var(--space-4) var(--space-5);
   text-decoration: none;
   color: inherit;
+  box-shadow: 0px 1px 5px #121113;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -2774,4 +2782,59 @@ a.metrica:hover {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.campo-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.campo-checkbox input[type="checkbox"] {
+  width: auto;
+}
+
+.panel-columnas {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  max-width: calc(100vw - 40px);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: var(--space-2) 0;
+  z-index: 110;
+}
+
+.menu-desplegable.abierto .panel-columnas {
+  display: block;
+}
+
+.panel-columnas-titulo {
+  padding: var(--space-2) var(--space-4) var(--space-1) var(--space-4);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.panel-columnas-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.panel-columnas-item:hover {
+  background-color: var(--color-bg);
+}
+
+.panel-columnas-item input[type="checkbox"] {
+  width: auto;
 }

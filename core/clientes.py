@@ -1,4 +1,5 @@
 import re
+from psycopg2.extras import Json
 from core.database import obtener_conexion
 from core.paises import PAISES
 
@@ -35,46 +36,21 @@ def telefono_valido(telefono):
 ETAPAS_CLIENTE = ["Prospecto", "Negociación", "Cliente activo"]
 
 
-def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None, etapa="Prospecto", valor_estimado=None):
+def agregar_cliente(nombre, email, telefono, empresa, notas, agencia_id, cliente_desde=None, etapa="Prospecto", valor_estimado=None, campos_personalizados=None):
     conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute(
-        "INSERT INTO clientes (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado)
-    )
-    conexion.commit()
-    conexion.close()
-
-def mostrar_clientes():
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM clientes")
-    resultados = cursor.fetchall()
-    conexion.close()
-    for cliente in resultados:
-        print(f"id: {cliente[0]} nombre: {cliente[1]}, email: {cliente[2]}, telefono: {cliente[3]}, empresa: {cliente[4]}, notas: {cliente[5]}")
-
-def buscar_cliente(nombre):
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM clientes WHERE nombre = %s", (nombre,))
-    resultado = cursor.fetchone()
-    conexion.close()
-    return resultado
-
-def eliminar_cliente(nombre):
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("DELETE FROM clientes WHERE nombre = %s", (nombre,))
-    conexion.commit()
-    conexion.close()
-
-def editar_cliente(nombre, campo, nuevo_valor):
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute(f"UPDATE clientes SET {campo} = %s WHERE nombre = %s", (nuevo_valor, nombre))
-    conexion.commit()
-    conexion.close()
+    try:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "INSERT INTO clientes (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado, campos_personalizados) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (nombre, email, telefono, empresa, notas, agencia_id, cliente_desde, etapa, valor_estimado, Json(campos_personalizados or {}))
+        )
+        conexion.commit()
+    finally:
+        # try/finally (en vez del commit()+close() de siempre): si el INSERT
+        # choca con la constraint UNIQUE(agencia_id, email) por una carrera
+        # entre dos requests casi simultáneas, igual hay que devolver la
+        # conexión al pool en vez de perderla.
+        conexion.close()
 
 def eliminar_cliente_por_id(id, agencia_id):
     conexion = obtener_conexion()
@@ -83,14 +59,16 @@ def eliminar_cliente_por_id(id, agencia_id):
     conexion.commit()
     conexion.close()
 
-def editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, agencia_id, etapa="Prospecto", valor_estimado=None):
+def editar_cliente_por_id(id, nombre, email, telefono, empresa, notas, agencia_id, etapa="Prospecto", valor_estimado=None, campos_personalizados=None):
     conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("UPDATE clientes SET nombre = %s, email = %s, telefono = %s, empresa = %s, notas = %s, etapa = %s, valor_estimado = %s WHERE id = %s AND agencia_id = %s",
-                   (nombre, email, telefono, empresa, notas, etapa, valor_estimado, id, agencia_id)
-                   )
-    conexion.commit()
-    conexion.close()
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("UPDATE clientes SET nombre = %s, email = %s, telefono = %s, empresa = %s, notas = %s, etapa = %s, valor_estimado = %s, campos_personalizados = %s WHERE id = %s AND agencia_id = %s",
+                       (nombre, email, telefono, empresa, notas, etapa, valor_estimado, Json(campos_personalizados or {}), id, agencia_id)
+                       )
+        conexion.commit()
+    finally:
+        conexion.close()
 
 
 def actualizar_etapa_cliente(id, agencia_id, etapa):

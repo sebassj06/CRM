@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}{{ numero }} · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_estado = {'Borrador': 'badge-pendiente', 'Emitida': 'badge-progreso', 'Pagada': 'badge-completado', 'Anulada': 'badge-alta'} %}
+
+    <a href="/facturas" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a facturas</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <div class="pago-monto-fila">
+                <span class="icono-chip icono-chip-pagos">{{ icono('facturas', tamano=19) }}</span>
+                <h1>{{ numero }}</h1>
+            </div>
+            <p class="encabezado-descripcion">
+                <a href="/proyectos/{{ proyecto[0] }}" class="enlace-sutil">{{ nombre_proyecto }}</a>
+                {% if cliente %} · <a href="/clientes/{{ cliente[0] }}" class="enlace-sutil">{{ cliente[1] }}</a>{% endif %}
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <span class="badge {{ clases_estado.get(factura[3], 'badge-pendiente') }}">{{ factura[3] }}</span>
+            {% if vencida %}<span class="etiqueta-vencida">{{ icono('reloj', tamano=13) }} Vencida</span>{% endif %}
+        </div>
+    </div>
+
+    <div class="encabezado-acciones cotizacion-acciones-secundarias">
+        <a href="/facturas/{{ factura[0] }}/pdf" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Descargar PDF</a>
+        <button
+            type="button"
+            class="btn btn-secundario boton-editar-factura"
+            data-id="{{ factura[0] }}"
+            data-proyecto-id="{{ factura[1] }}"
+            data-descuento="{{ factura[4] }}"
+            data-impuesto="{{ factura[5] }}"
+            data-fecha-emision="{{ factura[6] or '' }}"
+            data-fecha-vencimiento="{{ factura[7] or '' }}"
+            data-notas="{{ factura[8] or '' }}"
+            data-items='{{ items_json | tojson }}'
+            data-redirigir-a="/facturas/{{ factura[0] }}"
+        >
+            {{ icono('editar', tamano=16) }} Editar
+        </button>
+        {% if factura[3] == 'Borrador' %}
+        <form method="POST" action="/facturas/{{ factura[0] }}/marcar-emitida" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario">{{ icono('correo', tamano=16) }} Marcar como emitida</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+        {% if factura[3] not in ('Anulada', 'Pagada') %}
+        <form method="POST" action="/facturas/{{ factura[0] }}/anular" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario">{{ icono('cerrar', tamano=16) }} Anular</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+        {% if rol_actual == 'admin' %}
+        <form
+            method="POST"
+            action="/facturas/{{ factura[0] }}/eliminar"
+            class="form-en-linea form-eliminar"
+            data-mensaje="¿Eliminar la factura {{ numero }}? Esta acción no se puede deshacer."
+        >
+            <button type="submit" class="btn btn-peligro" data-tooltip="Eliminar" aria-label="Eliminar factura">{{ icono('eliminar', tamano=16) }} Eliminar</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+    </div>
+
+    {% if factura[3] != 'Borrador' %}
+    <div class="tarjeta cotizacion-enlace-publico">
+        <h2>Enlace para el cliente</h2>
+        <p class="texto-secundario">Compartí este enlace para que el cliente vea la factura y la descargue en PDF, sin necesidad de iniciar sesión.</p>
+        <div class="campo-con-boton-lateral">
+            <input type="text" readonly id="input-enlace-publico" value="{{ enlace_publico }}">
+            <button type="button" id="boton-copiar-enlace" class="btn btn-secundario btn-sm">{{ icono('enlace', tamano=14) }} Copiar</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="tarjeta">
+        <h2>Ítems</h2>
+        <table class="tabla-items-cotizacion">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th>Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item[2] }}</td>
+                    <td>{{ item[3] | monto }}</td>
+                    <td>${{ item[4] | monto }}</td>
+                    <td>${{ (item[3] * item[4]) | monto }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <dl class="cotizacion-resumen-detalle">
+            <dt>Subtotal</dt>
+            <dd>${{ subtotal | monto }}</dd>
+            {% if factura[4] %}
+            <dt>Descuento</dt>
+            <dd>-${{ factura[4] | monto }}</dd>
+            {% endif %}
+            {% if factura[5] %}
+            <dt>Impuesto ({{ factura[5] | monto }}%)</dt>
+            <dd></dd>
+            {% endif %}
+            <dt>Total</dt>
+            <dd class="cotizacion-resumen-total">${{ total | monto }}</dd>
+            <dt>Saldo pendiente</dt>
+            <dd>
+                {% if saldo > 0 %}
+                    <span class="badge badge-pendiente">${{ saldo | monto }}</span>
+                {% else %}
+                    <span class="badge badge-completado">Cubierto</span>
+                {% endif %}
+            </dd>
+        </dl>
+        {% if factura[8] %}
+        <h3>Notas</h3>
+        <p>{{ factura[8] }}</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <h2>Pagos de esta factura</h2>
+        {% if pagos_factura %}
+            <ul class="lista-registros">
+                {% for pago in pagos_factura %}
+                    <li class="registro-item">
+                        <div>
+                            <a href="/pagos/{{ pago[0] }}" class="registro-monto">${{ pago[2] | monto }}</a>
+                            {% if pago[5] == 'pendiente' %}<span class="badge badge-pendiente">Pendiente</span>{% endif %}
+                        </div>
+                        <span class="texto-secundario">{{ pago[3] }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="texto-vacio">Todavía no se registró ningún pago contra esta factura.</p>
+        {% endif %}
+    </div>
+
+    {% include "_modal_factura.html" %}
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}Etapas · CRM Agencia{% endblock %}
+
+{% block content %}
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Etapas de Proyectos</h1>
+            <p class="encabezado-descripcion">Definí el pipeline de estados por el que pasan los proyectos de tu agencia.</p>
+        </div>
+        <div class="encabezado-acciones">
+            <button type="button" class="btn btn-primario" id="boton-nueva-etapa">
+                {{ icono('mas', tamano=16) }} Nueva etapa
+            </button>
+        </div>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Pipeline</h2>
+        {% if etapas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Orden</th>
+                    <th>Nombre</th>
+                    <th>Es final</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for etapa in etapas %}
+                <tr>
+                    <td data-label="Orden">
+                        <div class="acciones-fila">
+                            <button type="button" class="btn btn-secundario btn-sm btn-icono boton-mover-etapa" data-id="{{ etapa[0] }}" data-direccion="arriba" {{ 'disabled' if loop.first }} aria-label="Mover arriba">
+                                {{ icono('flecha-arriba', tamano=14) }}
+                            </button>
+                            <button type="button" class="btn btn-secundario btn-sm btn-icono boton-mover-etapa" data-id="{{ etapa[0] }}" data-direccion="abajo" {{ 'disabled' if loop.last }} aria-label="Mover abajo">
+                                {{ icono('flecha-abajo', tamano=14) }}
+                            </button>
+                        </div>
+                    </td>
+                    <td data-label="Nombre">{{ etapa[2] }}</td>
+                    <td data-label="Es final">
+                        <span class="badge {{ 'badge-completado' if etapa[4] else 'badge-pendiente' }}">{{ 'Sí' if etapa[4] else 'No' }}</span>
+                    </td>
+                    <td data-label="Acciones">
+                        <div class="acciones-fila">
+                            <button
+                                type="button"
+                                class="btn btn-secundario btn-sm btn-icono boton-editar-etapa"
+                                data-tooltip="Editar" aria-label="Editar etapa"
+                                data-id="{{ etapa[0] }}"
+                                data-nombre="{{ etapa[2] }}"
+                                data-es-final="{{ '1' if etapa[4] else '0' }}"
+                            >
+                                {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                            </button>
+                            <form
+                                method="POST"
+                                action="/configuracion/etapas/{{ etapa[0] }}/eliminar"
+                                class="form-en-linea form-eliminar"
+                                data-mensaje="¿Eliminar la etapa '{{ etapa[2] }}'? Esta acción no se puede deshacer."
+                            >
+                                <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar etapa">
+                                    {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                                </button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="texto-vacio">Todavía no hay etapas configuradas.</p>
+        {% endif %}
+    </div>
+
+    <dialog id="modal-etapa" class="modal">
+        <form method="POST" action="/configuracion/etapas/nueva" id="formulario-etapa" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('proyectos', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-etapa-titulo">Nueva etapa</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-etapa" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-etapa-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="campo-etapa-nombre">Nombre</label>
+                    <input type="text" id="campo-etapa-nombre" name="nombre" placeholder="Ej: Pendiente, En revisión, Entregado..." autofocus>
+                </div>
+                <div class="campo campo-ancho">
+                    <label class="campo-checkbox">
+                        <input type="checkbox" id="campo-etapa-final" name="es_final">
+                        Es una etapa final (cierra el proyecto)
+                    </label>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-etapa" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+{% endblock %}

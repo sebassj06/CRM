@@ -29,6 +29,21 @@ def obtener_tareas_proyecto(proyecto_id, agencia_id):
     return resultados
 
 
+def tareas_de_cliente(cliente_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        """SELECT tareas.*, proyectos.titulo FROM tareas
+           JOIN proyectos ON proyectos.id = tareas.proyecto_id
+           WHERE proyectos.cliente_id = %s AND proyectos.agencia_id = %s AND tareas.agencia_id = %s
+           ORDER BY tareas.id DESC""",
+        (cliente_id, agencia_id, agencia_id)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
+
 def obtener_tareas(agencia_id, responsable_id=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()

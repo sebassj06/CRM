@@ -20,6 +20,42 @@ def agregar_cotizacion(cliente_id, titulo, descuento, impuesto_porcentaje, fecha
     return cotizacion_id
 
 
+def cotizaciones_de_cliente(cliente_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT * FROM cotizaciones WHERE cliente_id = %s AND agencia_id = %s ORDER BY id DESC",
+        (cliente_id, agencia_id)
+    )
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
+
+
+def contar_cotizaciones_cliente(cliente_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT COUNT(*) FROM cotizaciones WHERE cliente_id = %s AND agencia_id = %s",
+        (cliente_id, agencia_id)
+    )
+    total = cursor.fetchone()[0]
+    conexion.close()
+    return total
+
+
+def contar_cotizaciones_proyecto(proyecto_id, agencia_id):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT COUNT(*) FROM cotizaciones WHERE proyecto_id = %s AND agencia_id = %s",
+        (proyecto_id, agencia_id)
+    )
+    total = cursor.fetchone()[0]
+    conexion.close()
+    return total
+
+
 def obtener_cotizaciones_paginado(agencia_id, pagina, por_pagina):
     conexion = obtener_conexion()
     cursor = conexion.cursor()

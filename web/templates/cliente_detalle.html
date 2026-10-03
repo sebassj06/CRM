@@ -25,6 +25,7 @@
                 data-notas="{{ cliente[5] or '' }}"
                 data-etapa="{{ cliente[9] }}"
                 data-valor-estimado="{{ cliente[10] if cliente[10] is not none else '' }}"
+                data-campos='{{ (cliente[11] if cliente[11] is not none else {}) | tojson }}'
                 data-redirigir-a="/clientes/{{ cliente[0] }}"
             >
                 {{ icono('editar', tamano=16) }} Editar cliente
@@ -45,12 +46,30 @@
             <dd>{{ cliente[2] if cliente[2] else '—' }}</dd>
             <dt>Teléfono</dt>
             <dd>{{ cliente[3] if cliente[3] else '—' }}</dd>
+            <dt>Empresa</dt>
+            <dd>{{ cliente[4] if cliente[4] else '—' }}</dd>
+            <dt>Valor estimado</dt>
+            <dd>{{ ('$' ~ (cliente[10] | monto)) if cliente[10] is not none else '—' }}</dd>
+            <dt>Cliente desde</dt>
+            <dd>{{ cliente[7] if cliente[7] else '—' }}</dd>
         </dl>
         {% if cliente[5] %}
             <h3>Notas generales</h3>
             <p>{{ cliente[5] }}</p>
         {% endif %}
     </div>
+
+    {% if definiciones_campo %}
+    <div class="tarjeta">
+        <h2>Campos personalizados</h2>
+        <dl>
+            {% for definicion in definiciones_campo %}
+            <dt>{{ definicion[4] }}</dt>
+            <dd>{{ (cliente[11] or {}).get(definicion[3], '—') }}</dd>
+            {% endfor %}
+        </dl>
+    </div>
+    {% endif %}
 
     {% if proyectos %}
     <div class="tarjeta">
@@ -229,6 +248,25 @@
                     <label for="modal-notas">Notas</label>
                     <input type="text" id="modal-notas" name="notas" placeholder="Opcional">
                 </div>
+                {% for definicion in definiciones_campo %}
+                <div class="campo{{ ' campo-ancho' if definicion[5] == 'texto' }}">
+                    <label for="modal-campo-{{ definicion[0] }}">{{ definicion[4] }}{% if definicion[8] %} *{% endif %}</label>
+                    {% if definicion[5] == 'seleccion' %}
+                    <select id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                        <option value=""></option>
+                        {% for opcion in (definicion[6] or '').split(',') %}
+                        <option value="{{ opcion.strip() }}">{{ opcion.strip() }}</option>
+                        {% endfor %}
+                    </select>
+                    {% elif definicion[5] == 'numero' %}
+                    <input type="number" step="any" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% elif definicion[5] == 'fecha' %}
+                    <input type="date" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% else %}
+                    <input type="text" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
             <div class="acciones-formulario">
                 <button type="button" id="boton-cancelar-modal-cliente" class="btn btn-secundario">Cancelar</button>
