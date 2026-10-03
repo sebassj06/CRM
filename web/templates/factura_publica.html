@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        if (localStorage.getItem('tema') === 'oscuro') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+    <title>Factura de {{ agencia[1] if agencia else 'CRM Agencia' }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% from "_iconos.html" import icono %}
+    <div class="cotizacion-publica-layout">
+        <main class="cotizacion-publica-contenido">
+            <div class="encabezado-pagina">
+                <div>
+                    <p class="encabezado-descripcion">{{ agencia[1] if agencia else 'CRM Agencia' }}</p>
+                    <h1>{{ "F-%04d"|format(factura[2]) }}</h1>
+                    {% if cliente %}<p class="encabezado-descripcion">Para {{ cliente[1] }}</p>{% endif %}
+                </div>
+                <div class="encabezado-acciones">
+                    <a href="/facturas/{{ factura[0] }}/pdf" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Descargar PDF</a>
+                </div>
+            </div>
+
+            {% if factura[3] == 'Pagada' %}
+                <div class="tarjeta cotizacion-respuesta-estado cotizacion-respuesta-aceptada">
+                    {{ icono('check-circulo', tamano=20) }} Esta factura ya está pagada.
+                </div>
+            {% elif factura[3] == 'Anulada' %}
+                <div class="tarjeta cotizacion-respuesta-estado">
+                    {{ icono('cerrar', tamano=20) }} Esta factura fue anulada.
+                </div>
+            {% elif vencida %}
+                <div class="tarjeta cotizacion-respuesta-estado">
+                    {{ icono('reloj', tamano=20) }} Esta factura venció el {{ factura[7] }}.
+                </div>
+            {% endif %}
+
+            <div class="tarjeta">
+                <h2>Ítems</h2>
+                <table class="tabla-items-cotizacion">
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cant.</th>
+                            <th>Precio</th>
+                            <th>Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item[2] }}</td>
+                            <td>{{ item[3] | monto }}</td>
+                            <td>${{ item[4] | monto }}</td>
+                            <td>${{ (item[3] * item[4]) | monto }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <dl class="cotizacion-resumen-detalle">
+                    <dt>Subtotal</dt>
+                    <dd>${{ subtotal | monto }}</dd>
+                    {% if factura[4] %}
+                    <dt>Descuento</dt>
+                    <dd>-${{ factura[4] | monto }}</dd>
+                    {% endif %}
+                    {% if factura[5] %}
+                    <dt>Impuesto ({{ factura[5] | monto }}%)</dt>
+                    <dd></dd>
+                    {% endif %}
+                    <dt>Total</dt>
+                    <dd class="cotizacion-resumen-total">${{ total | monto }}</dd>
+                    <dt>Saldo pendiente</dt>
+                    <dd>${{ saldo | monto }}</dd>
+                </dl>
+                {% if factura[8] %}
+                    <h3>Notas</h3>
+                    <p>{{ factura[8] }}</p>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

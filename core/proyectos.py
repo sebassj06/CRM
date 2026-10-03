@@ -1,22 +1,17 @@
+from psycopg2.extras import Json
 from core.database import obtener_conexion
+from core.etapas import etapa_es_final, nombres_etapas_finales, etapa_final_principal
 from datetime import datetime, timedelta
 
-def agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None):
+def agregar_proyecto(titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None, campos_personalizados=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto) VALUES(%s, %s, %s, %s, %s, %s)",
-                   (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto))
+    cursor.execute("INSERT INTO proyectos (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto, campos_personalizados) VALUES(%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                   (titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto, Json(campos_personalizados or {})))
+    proyecto_id = cursor.fetchone()[0]
     conexion.commit()
     conexion.close()
-
-def mostrar_proyectos():
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM proyectos")
-    resultados = cursor.fetchall()
-    conexion.close()
-    for proyecto in resultados:
-        print(f"id: {proyecto[0]}, titulo: {proyecto[1]}, cliente_id: {proyecto[2]}, estado: {proyecto[3]}, fecha_entrega: {proyecto[4]}")
+    return proyecto_id
 
 def proyectos_de_cliente(cliente_id, agencia_id):
     conexion = obtener_conexion()
@@ -73,21 +68,25 @@ def obtener_proyecto_por_id(id, agencia_id):
     conexion.close()
     return resultado
 
-def editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None):
+def editar_proyecto_por_id(id, titulo, cliente_id, estado, fecha_entrega, agencia_id, presupuesto=None, campos_personalizados=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE proyectos SET titulo = %s, cliente_id = %s, estado = %s, fecha_entrega = %s, presupuesto = %s WHERE id = %s AND agencia_id = %s",
-                   (titulo, cliente_id, estado, fecha_entrega, presupuesto, id, agencia_id)
+    cursor.execute("UPDATE proyectos SET titulo = %s, cliente_id = %s, estado = %s, fecha_entrega = %s, presupuesto = %s, campos_personalizados = %s WHERE id = %s AND agencia_id = %s",
+                   (titulo, cliente_id, estado, fecha_entrega, presupuesto, Json(campos_personalizados or {}), id, agencia_id)
     )
     conexion.commit()
     conexion.close()
 
 def marcar_proyecto_completado(id, agencia_id):
+    principal = etapa_final_principal(agencia_id)
+    if principal is None:
+        return False
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    cursor.execute("UPDATE proyectos SET estado = 'Completado' WHERE id = %s AND agencia_id = %s", (id, agencia_id))
+    cursor.execute("UPDATE proyectos SET estado = %s WHERE id = %s AND agencia_id = %s", (principal[2], id, agencia_id))
     conexion.commit()
     conexion.close()
+    return True
 
 def archivar_proyecto_por_id(id, agencia_id):
     conexion = obtener_conexion()
@@ -110,7 +109,17 @@ def eliminar_proyecto_por_id(id, agencia_id):
     conexion.commit()
     conexion.close()
 
+def contar_proyectos_con_estado(agencia_id, estado):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT COUNT(*) FROM proyectos WHERE agencia_id = %s AND estado = %s", (agencia_id, estado))
+    total = cursor.fetchone()[0]
+    conexion.close()
+    return total
+
 def _parsear_fecha(fecha_texto):
+    if not fecha_texto:
+        return None
     for formato in ("%Y-%m-%d", "%d/%m/%Y"):
         try:
             return datetime.strptime(fecha_texto, formato).date()
@@ -118,8 +127,8 @@ def _parsear_fecha(fecha_texto):
             continue
     return None
 
-def proyecto_esta_por_vencer(estado, fecha_entrega, dias=3):
-    if estado == "Completado":
+def proyecto_esta_por_vencer(estado, fecha_entrega, agencia_id, dias=3):
+    if etapa_es_final(agencia_id, estado):
         return False
 
     fecha = _parsear_fecha(fecha_entrega)
@@ -131,11 +140,12 @@ def proyecto_esta_por_vencer(estado, fecha_entrega, dias=3):
     return hoy <= fecha <= limite
 
 def proyectos_por_vencer(agencia_id, dias=3):
+    finales = nombres_etapas_finales(agencia_id)
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute(
-        "SELECT * FROM proyectos WHERE estado != 'Completado' AND agencia_id = %s AND archivado = false",
-        (agencia_id,)
+        "SELECT * FROM proyectos WHERE NOT (estado = ANY(%s)) AND agencia_id = %s AND archivado = false",
+        (finales, agencia_id)
     )
     resultados = cursor.fetchall()
     conexion.close()

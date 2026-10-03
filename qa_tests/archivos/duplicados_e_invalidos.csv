@@ -1,0 +1,5 @@
+nombre,email,telefono,empresa,notas,cliente_desde
+QA_Import Dup,qa_import_dup@test.com,,,,
+QA_Import Dup Otra vez,qa_import_dup@test.com,,,,
+,qa_import_sinnombre@test.com,,,,
+QA_Import EmailMalo,esto-no-es-email,,,,

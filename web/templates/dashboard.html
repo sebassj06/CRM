@@ -61,7 +61,6 @@
                 <span class="icono-chip icono-chip-sm icono-chip-proyectos">{{ icono('proyectos', tamano=16) }}</span>
                 <h2>Proyectos por estado</h2>
             </div>
-            {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
             {% if estados_con_porcentaje %}
                 {% for estado, cantidad, porcentaje in estados_con_porcentaje %}
                     <p><span class="badge {{ clases_estado.get(estado, 'badge-pendiente') }}">{{ estado }}</span> {{ cantidad }} ({{ porcentaje }}%)</p>

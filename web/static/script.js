@@ -125,11 +125,63 @@ function inicializarMenusDesplegables() {
     });
 }
 
-function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimpiar) {
+function inicializarColumnasClientes() {
+    const panel = document.querySelector('.panel-columnas');
+    const tabla = document.getElementById('tabla-clientes');
+    if (!panel || !tabla) {
+        return;
+    }
+
+    const CLAVE_LOCALSTORAGE = 'crm_columnas_clientes';
+    const casillas = Array.from(panel.querySelectorAll('input[type="checkbox"]'));
+
+    function leerGuardadas() {
+        try {
+            const guardado = localStorage.getItem(CLAVE_LOCALSTORAGE);
+            return guardado ? JSON.parse(guardado) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function guardar(visibles) {
+        try {
+            localStorage.setItem(CLAVE_LOCALSTORAGE, JSON.stringify(visibles));
+        } catch (error) {
+            // localStorage no disponible (modo privado, etc.) - no persiste, pero sigue funcionando en esta carga.
+        }
+    }
+
+    function aplicar(visibles) {
+        casillas.forEach(function (casilla) {
+            const columna = casilla.dataset.columna;
+            const mostrar = visibles.indexOf(columna) !== -1;
+            casilla.checked = mostrar;
+            tabla.querySelectorAll('[data-columna="' + columna + '"]').forEach(function (celda) {
+                celda.hidden = !mostrar;
+            });
+        });
+    }
+
+    const guardadas = leerGuardadas();
+    const visiblesIniciales = guardadas || casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.columna; });
+    aplicar(visiblesIniciales);
+
+    casillas.forEach(function (casilla) {
+        casilla.addEventListener('change', function () {
+            const visibles = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.columna; });
+            aplicar(visibles);
+            guardar(visibles);
+        });
+    });
+}
+
+function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimpiar, idFiltroExtra) {
     const input = document.getElementById(idInput);
     const tabla = document.getElementById(idTabla);
     const estadoSinResultados = document.getElementById(idSinResultados);
     const botonLimpiar = document.getElementById(idBotonLimpiar);
+    const filtroExtra = idFiltroExtra ? document.getElementById(idFiltroExtra) : null;
     const paginacion = tabla ? tabla.parentElement.querySelector('.paginacion') : null;
 
     if (!input || !tabla) {
@@ -140,11 +192,14 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
 
     function filtrar() {
         const termino = input.value.trim().toLowerCase();
+        const etapaElegida = filtroExtra ? filtroExtra.value : '';
         let visibles = 0;
 
         filas.forEach(function (fila) {
             const texto = fila.dataset.busqueda || fila.textContent.toLowerCase();
-            const coincide = texto.includes(termino);
+            const coincideTexto = texto.includes(termino);
+            const coincideEtapa = !etapaElegida || fila.dataset.etapa === etapaElegida;
+            const coincide = coincideTexto && coincideEtapa;
             fila.style.display = coincide ? '' : 'none';
             if (coincide) {
                 visibles++;
@@ -159,19 +214,44 @@ function inicializarBuscadorTabla(idInput, idTabla, idSinResultados, idBotonLimp
         // más páginas, la paginación no tiene sentido mientras se busca (para
         // buscar en todos los registros está el buscador global del topbar).
         if (paginacion) {
-            paginacion.hidden = termino !== '';
+            paginacion.hidden = termino !== '' || etapaElegida !== '';
         }
     }
 
     input.addEventListener('input', filtrar);
 
+    if (filtroExtra) {
+        filtroExtra.addEventListener('change', filtrar);
+    }
+
     if (botonLimpiar) {
         botonLimpiar.addEventListener('click', function () {
             input.value = '';
+            if (filtroExtra) {
+                filtroExtra.value = '';
+            }
             filtrar();
             input.focus();
         });
     }
+}
+
+// Precarga los inputs dinámicos 'campo_<nombre_campo>' (campos personalizados)
+// de un formulario a partir del JSON guardado en data-campos de un botón de
+// editar. Se usa en los modales de cliente y de proyecto.
+function precargarCamposPersonalizados(formulario, jsonTexto) {
+    let campos = {};
+    try {
+        campos = jsonTexto ? JSON.parse(jsonTexto) : {};
+    } catch (error) {
+        campos = {};
+    }
+    Object.keys(campos).forEach(function (clave) {
+        const elemento = formulario.elements['campo_' + clave];
+        if (elemento) {
+            elemento.value = campos[clave];
+        }
+    });
 }
 
 function inicializarModalCliente() {
@@ -294,6 +374,13 @@ function inicializarModalCliente() {
         cargarTelefono(boton.dataset.telefono || '');
         formulario.elements['empresa'].value = boton.dataset.empresa || '';
         formulario.elements['notas'].value = boton.dataset.notas || '';
+        if (formulario.elements['etapa']) {
+            formulario.elements['etapa'].value = boton.dataset.etapa || 'Prospecto';
+        }
+        if (formulario.elements['valor_estimado']) {
+            formulario.elements['valor_estimado'].value = boton.dataset.valorEstimado || '';
+        }
+        precargarCamposPersonalizados(formulario, boton.dataset.campos);
         titulo.textContent = 'Editar cliente';
         modal.showModal();
     }
@@ -445,6 +532,7 @@ function inicializarModalProyecto() {
         formulario.elements['fecha_entrega'].min = fechaExistente && fechaExistente < hoy ? fechaExistente : hoy;
         formulario.elements['fecha_entrega'].value = fechaExistente;
         formulario.elements['presupuesto'].value = boton.dataset.presupuesto || '';
+        precargarCamposPersonalizados(formulario, boton.dataset.campos);
         titulo.textContent = 'Editar proyecto';
         modal.showModal();
     }
@@ -565,6 +653,12 @@ function inicializarModalPago() {
         formulario.elements['monto'].value = boton.dataset.monto || '';
         formulario.elements['fecha'].value = boton.dataset.fecha || '';
         formulario.elements['estado'].value = boton.dataset.estado || 'cobrado';
+        if (formulario.elements['proyecto_id']) {
+            formulario.elements['proyecto_id'].dispatchEvent(new Event('change'));
+        }
+        if (formulario.elements['factura_id']) {
+            formulario.elements['factura_id'].value = boton.dataset.facturaId || '';
+        }
         titulo.textContent = 'Editar pago';
         modal.showModal();
     }
@@ -635,6 +729,856 @@ function inicializarModalPago() {
         url.searchParams.delete('editar');
         window.history.replaceState({}, '', url);
     }
+}
+
+function inicializarModalTarea() {
+    const modal = document.getElementById('modal-tarea');
+    const formulario = document.getElementById('formulario-tarea');
+    const titulo = document.getElementById('modal-tarea-titulo');
+    const contenedorError = document.getElementById('modal-tarea-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function abrirParaNuevo(proyectoIdFijo, redirigirA) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/tareas/nueva';
+        formulario.dataset.redirigirA = redirigirA || '/tareas';
+        if (proyectoIdFijo) {
+            formulario.elements['proyecto_id'].value = proyectoIdFijo;
+        }
+        titulo.textContent = 'Nueva tarea';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/tareas/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || '/tareas';
+        formulario.elements['proyecto_id'].value = boton.dataset.proyectoId || '';
+        formulario.elements['titulo'].value = boton.dataset.titulo || '';
+        formulario.elements['descripcion'].value = boton.dataset.descripcion || '';
+        formulario.elements['responsable_id'].value = boton.dataset.responsableId || '';
+        formulario.elements['prioridad'].value = boton.dataset.prioridad || 'Media';
+        formulario.elements['estado'].value = boton.dataset.estado || 'Pendiente';
+        formulario.elements['fecha_limite'].value = boton.dataset.fechaLimite || '';
+        titulo.textContent = 'Editar tarea';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nueva-tarea').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(null, null);
+        });
+    });
+
+    document.querySelectorAll('.boton-nueva-tarea-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.proyectoId, window.location.pathname);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-tarea').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-tarea');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-tarea');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = formulario.dataset.redirigirA || '/tareas';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la tarea.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nueva')) {
+        abrirParaNuevo(null, null);
+    } else if (parametros.has('editar')) {
+        const botonTarea = document.querySelector(`.boton-editar-tarea[data-id="${parametros.get('editar')}"]`);
+        if (botonTarea) {
+            abrirParaEditar(botonTarea);
+        }
+    }
+
+    if (parametros.has('nueva') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nueva');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarChecklist() {
+    const tarjeta = document.getElementById('tarjeta-checklist');
+    if (!tarjeta) {
+        return;
+    }
+
+    const tareaId = tarjeta.dataset.tareaId;
+    const lista = document.getElementById('lista-checklist');
+    const formulario = document.getElementById('formulario-subtarea');
+    const input = document.getElementById('input-nueva-subtarea');
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    function wirearItem(item) {
+        const checkbox = item.querySelector('.checklist-checkbox');
+        const texto = item.querySelector('.checklist-texto');
+        const botonEliminar = item.querySelector('.boton-eliminar-subtarea');
+
+        checkbox.addEventListener('change', function () {
+            const completada = checkbox.checked;
+            texto.classList.toggle('checklist-texto-completado', completada);
+
+            fetch(`/tareas/${tareaId}/subtareas/${item.dataset.id}/alternar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (!datos.exito) {
+                        checkbox.checked = !completada;
+                        texto.classList.toggle('checklist-texto-completado', !completada);
+                    }
+                })
+                .catch(function () {
+                    checkbox.checked = !completada;
+                    texto.classList.toggle('checklist-texto-completado', !completada);
+                });
+        });
+
+        botonEliminar.addEventListener('click', function () {
+            fetch(`/tareas/${tareaId}/subtareas/${item.dataset.id}/eliminar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (datos.exito) {
+                        item.remove();
+                        if (!lista.querySelector('.checklist-item')) {
+                            const vacio = document.createElement('li');
+                            vacio.className = 'texto-vacio';
+                            vacio.id = 'checklist-vacio';
+                            vacio.textContent = 'Sin ítems todavía. Agregá uno abajo.';
+                            lista.appendChild(vacio);
+                        }
+                    }
+                });
+        });
+    }
+
+    lista.querySelectorAll('.checklist-item').forEach(wirearItem);
+
+    if (formulario) {
+        formulario.addEventListener('submit', function (evento) {
+            evento.preventDefault();
+            const texto = input.value.trim();
+            if (!texto) {
+                return;
+            }
+
+            fetch(`/tareas/${tareaId}/subtareas/nueva`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ csrf_token: csrfToken, texto: texto })
+            })
+                .then(function (respuesta) {
+                    return respuesta.json();
+                })
+                .then(function (datos) {
+                    if (datos.exito) {
+                        window.location.reload();
+                    }
+                });
+        });
+    }
+}
+
+function inicializarModalGasto() {
+    const modal = document.getElementById('modal-gasto');
+    const formulario = document.getElementById('formulario-gasto');
+    const titulo = document.getElementById('modal-gasto-titulo');
+    const contenedorError = document.getElementById('modal-gasto-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function abrirParaNuevo(proyectoIdFijo, redirigirA) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/gastos/nuevo';
+        formulario.dataset.redirigirA = redirigirA || '/gastos';
+        if (proyectoIdFijo) {
+            formulario.elements['proyecto_id'].value = proyectoIdFijo;
+        }
+        titulo.textContent = 'Nuevo gasto';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/gastos/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || '/gastos';
+        formulario.elements['proyecto_id'].value = boton.dataset.proyectoId || '';
+        formulario.elements['descripcion'].value = boton.dataset.descripcion || '';
+        formulario.elements['monto'].value = boton.dataset.monto || '';
+        formulario.elements['categoria'].value = boton.dataset.categoria || 'Otro';
+        formulario.elements['proveedor'].value = boton.dataset.proveedor || '';
+        formulario.elements['fecha'].value = boton.dataset.fecha || '';
+        titulo.textContent = 'Editar gasto';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nuevo-gasto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(null, null);
+        });
+    });
+
+    document.querySelectorAll('.boton-nuevo-gasto-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.proyectoId, window.location.pathname);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-gasto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-gasto');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-gasto');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = formulario.dataset.redirigirA || '/gastos';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar el gasto.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nuevo')) {
+        abrirParaNuevo(null, null);
+    } else if (parametros.has('editar')) {
+        const botonGasto = document.querySelector(`.boton-editar-gasto[data-id="${parametros.get('editar')}"]`);
+        if (botonGasto) {
+            abrirParaEditar(botonGasto);
+        }
+    }
+
+    if (parametros.has('nuevo') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nuevo');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarModalCotizacion() {
+    const modal = document.getElementById('modal-cotizacion');
+    const formulario = document.getElementById('formulario-cotizacion');
+    const titulo = document.getElementById('modal-cotizacion-titulo');
+    const contenedorError = document.getElementById('modal-cotizacion-error');
+    const contenedorItems = document.getElementById('filas-items');
+    const plantilla = document.getElementById('plantilla-item-cotizacion');
+    const botonAgregar = document.getElementById('boton-agregar-item');
+
+    if (!modal || !formulario || !plantilla) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function formatearMonto(numero) {
+        const texto = numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return texto.endsWith('.00') ? texto.slice(0, -3) : texto;
+    }
+
+    function recalcular() {
+        let subtotal = 0;
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            const cantidad = parseFloat(fila.querySelector('.cotizacion-item-cantidad').value) || 0;
+            const precio = parseFloat(fila.querySelector('.cotizacion-item-precio').value) || 0;
+            const importe = cantidad * precio;
+            fila.querySelector('.cotizacion-item-importe').textContent = `$${formatearMonto(importe)}`;
+            subtotal += importe;
+        });
+
+        const descuento = parseFloat(formulario.elements['descuento'].value) || 0;
+        const impuesto = parseFloat(formulario.elements['impuesto_porcentaje'].value) || 0;
+        const conDescuento = Math.max(subtotal - descuento, 0);
+        const total = conDescuento * (1 + impuesto / 100);
+
+        document.getElementById('resumen-subtotal').textContent = `$${formatearMonto(subtotal)}`;
+        document.getElementById('resumen-total').textContent = `$${formatearMonto(total)}`;
+    }
+
+    function wirearFila(fila) {
+        fila.querySelectorAll('input').forEach(function (input) {
+            input.addEventListener('input', recalcular);
+        });
+        fila.querySelector('.boton-quitar-item').addEventListener('click', function () {
+            if (contenedorItems.querySelectorAll('.cotizacion-item-fila').length > 1) {
+                fila.remove();
+                recalcular();
+            }
+        });
+    }
+
+    function agregarFila(descripcion, cantidad, precio) {
+        const nodo = plantilla.content.cloneNode(true);
+        contenedorItems.appendChild(nodo);
+        const fila = contenedorItems.lastElementChild;
+        fila.querySelector('input[name="item_descripcion[]"]').value = descripcion || '';
+        fila.querySelector('.cotizacion-item-cantidad').value = (cantidad === undefined || cantidad === null) ? 1 : cantidad;
+        fila.querySelector('.cotizacion-item-precio').value = (precio === undefined || precio === null) ? 0 : precio;
+        wirearFila(fila);
+        return fila;
+    }
+
+    function limpiarItems() {
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            fila.remove();
+        });
+    }
+
+    botonAgregar.addEventListener('click', function () {
+        const fila = agregarFila('', 1, 0);
+        recalcular();
+        fila.querySelector('input[name="item_descripcion[]"]').focus();
+    });
+
+    function abrirParaNuevo() {
+        formulario.reset();
+        ocultarError();
+        limpiarItems();
+        agregarFila('', 1, 0);
+        formulario.action = '/cotizaciones/nueva';
+        formulario.dataset.redirigirA = '';
+        titulo.textContent = 'Nueva cotización';
+        recalcular();
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/cotizaciones/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || `/cotizaciones/${boton.dataset.id}`;
+        formulario.elements['cliente_id'].value = boton.dataset.clienteId || '';
+        formulario.elements['titulo'].value = boton.dataset.titulo || '';
+        formulario.elements['fecha_vencimiento'].value = boton.dataset.fechaVencimiento || '';
+        formulario.elements['descuento'].value = boton.dataset.descuento || 0;
+        formulario.elements['impuesto_porcentaje'].value = boton.dataset.impuesto || 0;
+        formulario.elements['notas'].value = boton.dataset.notas || '';
+
+        limpiarItems();
+        let items = [];
+        try {
+            items = JSON.parse(boton.dataset.items || '[]');
+        } catch (error) {
+            items = [];
+        }
+        if (items.length === 0) {
+            agregarFila('', 1, 0);
+        } else {
+            items.forEach(function (item) {
+                agregarFila(item[0], item[1], item[2]);
+            });
+        }
+
+        titulo.textContent = 'Editar cotización';
+        recalcular();
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nueva-cotizacion').forEach(function (boton) {
+        boton.addEventListener('click', abrirParaNuevo);
+    });
+
+    document.querySelectorAll('.boton-editar-cotizacion').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-cotizacion');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-cotizacion');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = datos.redirigir_a || formulario.dataset.redirigirA || '/cotizaciones';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la cotización.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nueva')) {
+        abrirParaNuevo();
+    } else if (parametros.has('editar')) {
+        const botonCotizacion = document.querySelector(`.boton-editar-cotizacion[data-id="${parametros.get('editar')}"]`);
+        if (botonCotizacion) {
+            abrirParaEditar(botonCotizacion);
+        }
+    }
+
+    if (parametros.has('nueva') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nueva');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarModalFactura() {
+    const modal = document.getElementById('modal-factura');
+    const formulario = document.getElementById('formulario-factura');
+    const titulo = document.getElementById('modal-factura-titulo');
+    const contenedorError = document.getElementById('modal-factura-error');
+    const contenedorItems = document.getElementById('filas-items-factura');
+    const plantilla = document.getElementById('plantilla-item-factura');
+    const botonAgregar = document.getElementById('boton-agregar-item-factura');
+
+    if (!modal || !formulario || !plantilla) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function formatearMonto(numero) {
+        const texto = numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return texto.endsWith('.00') ? texto.slice(0, -3) : texto;
+    }
+
+    function recalcular() {
+        let subtotal = 0;
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            const cantidad = parseFloat(fila.querySelector('.cotizacion-item-cantidad').value) || 0;
+            const precio = parseFloat(fila.querySelector('.cotizacion-item-precio').value) || 0;
+            const importe = cantidad * precio;
+            fila.querySelector('.cotizacion-item-importe').textContent = `$${formatearMonto(importe)}`;
+            subtotal += importe;
+        });
+
+        const descuento = parseFloat(formulario.elements['descuento'].value) || 0;
+        const impuesto = parseFloat(formulario.elements['impuesto_porcentaje'].value) || 0;
+        const conDescuento = Math.max(subtotal - descuento, 0);
+        const total = conDescuento * (1 + impuesto / 100);
+
+        document.getElementById('resumen-subtotal-factura').textContent = `$${formatearMonto(subtotal)}`;
+        document.getElementById('resumen-total-factura').textContent = `$${formatearMonto(total)}`;
+    }
+
+    function wirearFila(fila) {
+        fila.querySelectorAll('input').forEach(function (input) {
+            input.addEventListener('input', recalcular);
+        });
+        fila.querySelector('.boton-quitar-item').addEventListener('click', function () {
+            if (contenedorItems.querySelectorAll('.cotizacion-item-fila').length > 1) {
+                fila.remove();
+                recalcular();
+            }
+        });
+    }
+
+    function agregarFila(descripcion, cantidad, precio) {
+        const nodo = plantilla.content.cloneNode(true);
+        contenedorItems.appendChild(nodo);
+        const fila = contenedorItems.lastElementChild;
+        fila.querySelector('input[name="item_descripcion[]"]').value = descripcion || '';
+        fila.querySelector('.cotizacion-item-cantidad').value = (cantidad === undefined || cantidad === null) ? 1 : cantidad;
+        fila.querySelector('.cotizacion-item-precio').value = (precio === undefined || precio === null) ? 0 : precio;
+        wirearFila(fila);
+        return fila;
+    }
+
+    function limpiarItems() {
+        contenedorItems.querySelectorAll('.cotizacion-item-fila').forEach(function (fila) {
+            fila.remove();
+        });
+    }
+
+    botonAgregar.addEventListener('click', function () {
+        const fila = agregarFila('', 1, 0);
+        recalcular();
+        fila.querySelector('input[name="item_descripcion[]"]').focus();
+    });
+
+    function abrirParaNuevo(proyectoIdFijo, redirigirA) {
+        formulario.reset();
+        ocultarError();
+        limpiarItems();
+        agregarFila('', 1, 0);
+        formulario.action = '/facturas/nueva';
+        formulario.dataset.redirigirA = redirigirA || '';
+        if (proyectoIdFijo) {
+            formulario.elements['proyecto_id'].value = proyectoIdFijo;
+        }
+        titulo.textContent = 'Nueva factura';
+        recalcular();
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/facturas/${boton.dataset.id}/editar`;
+        formulario.dataset.redirigirA = boton.dataset.redirigirA || `/facturas/${boton.dataset.id}`;
+        formulario.elements['proyecto_id'].value = boton.dataset.proyectoId || '';
+        formulario.elements['fecha_emision'].value = boton.dataset.fechaEmision || '';
+        formulario.elements['fecha_vencimiento'].value = boton.dataset.fechaVencimiento || '';
+        formulario.elements['descuento'].value = boton.dataset.descuento || 0;
+        formulario.elements['impuesto_porcentaje'].value = boton.dataset.impuesto || 0;
+        formulario.elements['notas'].value = boton.dataset.notas || '';
+
+        limpiarItems();
+        let items = [];
+        try {
+            items = JSON.parse(boton.dataset.items || '[]');
+        } catch (error) {
+            items = [];
+        }
+        if (items.length === 0) {
+            agregarFila('', 1, 0);
+        } else {
+            items.forEach(function (item) {
+                agregarFila(item[0], item[1], item[2]);
+            });
+        }
+
+        titulo.textContent = 'Editar factura';
+        recalcular();
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nueva-factura').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(null, null);
+        });
+    });
+
+    document.querySelectorAll('.boton-nueva-factura-proyecto').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.proyectoId, window.location.pathname);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-factura').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-factura');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-factura');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.href = datos.redirigir_a || formulario.dataset.redirigirA || '/facturas';
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la factura.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.has('nueva')) {
+        abrirParaNuevo(null, null);
+    } else if (parametros.has('editar')) {
+        const botonFactura = document.querySelector(`.boton-editar-factura[data-id="${parametros.get('editar')}"]`);
+        if (botonFactura) {
+            abrirParaEditar(botonFactura);
+        }
+    }
+
+    if (parametros.has('nueva') || parametros.has('editar')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('nueva');
+        url.searchParams.delete('editar');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+function inicializarFiltroFacturaPorProyecto() {
+    // En el modal de pagos: el <select> de factura solo debe ofrecer las
+    // facturas del proyecto elegido. Todo client-side (cada <option> ya trae
+    // data-proyecto-id), sin endpoint nuevo — mismo criterio que el resto de
+    // la app, que ya manda listas completas a cada modal.
+    const selectsProyecto = document.querySelectorAll('select[name="proyecto_id"]');
+    selectsProyecto.forEach(function (selectProyecto) {
+        const formulario = selectProyecto.closest('form');
+        if (!formulario) {
+            return;
+        }
+        const selectFactura = formulario.querySelector('select[name="factura_id"]');
+        if (!selectFactura) {
+            return;
+        }
+
+        const opciones = Array.from(selectFactura.options);
+
+        function aplicarFiltro() {
+            const proyectoElegido = selectProyecto.value;
+            let hayOpcionSeleccionadaVisible = false;
+            opciones.forEach(function (opcion) {
+                if (!opcion.value) {
+                    return;
+                }
+                const coincide = opcion.dataset.proyectoId === proyectoElegido;
+                opcion.hidden = !coincide;
+                if (coincide && opcion.selected) {
+                    hayOpcionSeleccionadaVisible = true;
+                }
+            });
+            if (!hayOpcionSeleccionadaVisible && selectFactura.value) {
+                selectFactura.value = '';
+            }
+        }
+
+        selectProyecto.addEventListener('change', aplicarFiltro);
+        aplicarFiltro();
+    });
+}
+
+function inicializarCopiarEnlace() {
+    const boton = document.getElementById('boton-copiar-enlace');
+    const input = document.getElementById('input-enlace-publico');
+    if (!boton || !input) {
+        return;
+    }
+
+    boton.addEventListener('click', function () {
+        input.select();
+        navigator.clipboard.writeText(input.value).then(function () {
+            const textoOriginal = boton.innerHTML;
+            boton.textContent = 'Copiado';
+            setTimeout(function () {
+                boton.innerHTML = textoOriginal;
+            }, 1500);
+        }).catch(function () {
+            // Si el navegador bloquea el portapapeles (ej. sin HTTPS), el texto
+            // queda seleccionado para copiar manualmente con Ctrl+C.
+        });
+    });
 }
 
 function inicializarModalNota() {
@@ -880,6 +1824,242 @@ function inicializarModalUsuario() {
     });
 }
 
+function inicializarModalDefinicionCampo() {
+    const modal = document.getElementById('modal-campo-personalizado');
+    const formulario = document.getElementById('formulario-campo-personalizado');
+    const titulo = document.getElementById('modal-campo-personalizado-titulo');
+    const contenedorError = document.getElementById('modal-campo-personalizado-error');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    const selectEntidad = formulario.elements['entidad'];
+    const selectTipo = formulario.elements['tipo'];
+    const campoOpciones = document.getElementById('campo-opciones-seleccion');
+    const campoNombreInterno = document.getElementById('campo-nombre-interno');
+
+    function actualizarVisibilidadOpciones() {
+        if (campoOpciones) {
+            campoOpciones.hidden = selectTipo.value !== 'seleccion';
+        }
+    }
+
+    if (selectTipo) {
+        selectTipo.addEventListener('change', actualizarVisibilidadOpciones);
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    function abrirParaNuevo(entidad) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = '/configuracion/campos/nuevo';
+        selectEntidad.value = entidad;
+        selectEntidad.disabled = false;
+        selectTipo.disabled = false;
+        if (campoNombreInterno) {
+            campoNombreInterno.closest('.campo').hidden = true;
+        }
+        actualizarVisibilidadOpciones();
+        titulo.textContent = 'Nuevo campo personalizado';
+        modal.showModal();
+    }
+
+    function abrirParaEditar(boton) {
+        formulario.reset();
+        ocultarError();
+        formulario.action = `/configuracion/campos/${boton.dataset.id}/editar`;
+        selectEntidad.value = boton.dataset.entidad || '';
+        selectEntidad.disabled = true;
+        selectTipo.value = boton.dataset.tipo || 'texto';
+        selectTipo.disabled = true;
+        formulario.elements['etiqueta'].value = boton.dataset.etiqueta || '';
+        formulario.elements['opciones'].value = boton.dataset.opciones || '';
+        formulario.elements['obligatorio'].checked = boton.dataset.obligatorio === '1';
+        if (campoNombreInterno) {
+            campoNombreInterno.value = boton.dataset.nombreCampo || '';
+            campoNombreInterno.closest('.campo').hidden = false;
+        }
+        actualizarVisibilidadOpciones();
+        titulo.textContent = 'Editar campo personalizado';
+        modal.showModal();
+    }
+
+    document.querySelectorAll('.boton-nuevo-campo-personalizado').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaNuevo(boton.dataset.entidad);
+        });
+    });
+
+    document.querySelectorAll('.boton-editar-campo-personalizado').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            abrirParaEditar(boton);
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-campo-personalizado');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-campo-personalizado');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) { return respuesta.json(); })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.reload();
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar el campo personalizado.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+}
+
+function inicializarModalEtapa() {
+    const modal = document.getElementById('modal-etapa');
+    const formulario = document.getElementById('formulario-etapa');
+    const titulo = document.getElementById('modal-etapa-titulo');
+    const contenedorError = document.getElementById('modal-etapa-error');
+    const botonAbrir = document.getElementById('boton-nueva-etapa');
+
+    if (!modal || !formulario) {
+        return;
+    }
+
+    function ocultarError() {
+        if (contenedorError) {
+            contenedorError.hidden = true;
+            contenedorError.textContent = '';
+        }
+    }
+
+    function mostrarError(mensaje) {
+        if (contenedorError) {
+            contenedorError.textContent = mensaje;
+            contenedorError.hidden = false;
+        }
+        const boton = formulario.querySelector('[data-cargando]');
+        if (boton) {
+            boton.disabled = false;
+            boton.value = 'Guardar';
+        }
+    }
+
+    if (botonAbrir) {
+        botonAbrir.addEventListener('click', function () {
+            formulario.reset();
+            ocultarError();
+            formulario.action = '/configuracion/etapas/nueva';
+            titulo.textContent = 'Nueva etapa';
+            modal.showModal();
+        });
+    }
+
+    document.querySelectorAll('.boton-editar-etapa').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            formulario.reset();
+            ocultarError();
+            formulario.action = `/configuracion/etapas/${boton.dataset.id}/editar`;
+            formulario.elements['nombre'].value = boton.dataset.nombre || '';
+            formulario.elements['es_final'].checked = boton.dataset.esFinal === '1';
+            titulo.textContent = 'Editar etapa';
+            modal.showModal();
+        });
+    });
+
+    const botonCancelar = document.getElementById('boton-cancelar-modal-etapa');
+    const botonCerrar = document.getElementById('boton-cerrar-modal-etapa');
+    [botonCancelar, botonCerrar].forEach(function (boton) {
+        if (boton) {
+            boton.addEventListener('click', function () {
+                modal.close();
+            });
+        }
+    });
+
+    modal.addEventListener('click', function (evento) {
+        if (evento.target === modal) {
+            modal.close();
+        }
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        ocultarError();
+
+        fetch(formulario.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(formulario)
+        })
+            .then(function (respuesta) { return respuesta.json(); })
+            .then(function (datos) {
+                if (datos.exito) {
+                    window.location.reload();
+                } else {
+                    mostrarError(datos.error || 'Ocurrió un error al guardar la etapa.');
+                }
+            })
+            .catch(function () {
+                mostrarError('No se pudo conectar con el servidor. Probá de nuevo.');
+            });
+    });
+
+    document.querySelectorAll('.boton-mover-etapa').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            fetch(`/configuracion/etapas/${boton.dataset.id}/mover`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams({
+                    csrf_token: document.querySelector('input[name="csrf_token"]').value,
+                    direccion: boton.dataset.direccion
+                })
+            })
+                .then(function () { window.location.reload(); })
+                .catch(function () { window.location.reload(); });
+        });
+    });
+}
+
 function inicializarConfirmacionEliminar() {
     const modal = document.getElementById('modal-confirmar-eliminar');
     const mensaje = document.getElementById('modal-confirmar-eliminar-mensaje');
@@ -986,6 +2166,115 @@ function inicializarZonaArchivo() {
     });
 }
 
+function inicializarPipeline() {
+    const tablero = document.querySelector('.pipeline-tablero');
+    if (!tablero) {
+        return;
+    }
+
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    function formatearMonto(numero) {
+        const texto = numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return texto.endsWith('.00') ? texto.slice(0, -3) : texto;
+    }
+
+    function columnaDeEtapa(etapa) {
+        let encontrada = null;
+        tablero.querySelectorAll('.pipeline-columna-cuerpo').forEach(function (columna) {
+            if (columna.dataset.etapa === etapa) {
+                encontrada = columna;
+            }
+        });
+        return encontrada;
+    }
+
+    function actualizarColumna(columna) {
+        const tarjetas = columna.querySelectorAll('.pipeline-tarjeta');
+        const columnaCompleta = columna.closest('.pipeline-columna');
+        const contador = columnaCompleta.querySelector('.pipeline-columna-contador');
+        const total = columnaCompleta.querySelector('.pipeline-columna-total');
+
+        contador.textContent = tarjetas.length;
+
+        let suma = 0;
+        tarjetas.forEach(function (tarjeta) {
+            suma += Number(tarjeta.dataset.valor) || 0;
+        });
+        total.textContent = `$${formatearMonto(suma)} estimado`;
+
+        let vacio = columna.querySelector('.pipeline-columna-vacia');
+        if (tarjetas.length === 0 && !vacio) {
+            vacio = document.createElement('p');
+            vacio.className = 'pipeline-columna-vacia';
+            vacio.textContent = 'Sin clientes acá todavía.';
+            columna.appendChild(vacio);
+        } else if (tarjetas.length > 0 && vacio) {
+            vacio.remove();
+        }
+    }
+
+    // Los 3 botones (uno por etapa) ya están en el HTML desde el servidor;
+    // acá solo se oculta el que corresponde a la etapa actual de la tarjeta.
+    function actualizarBotonesVisibles(tarjeta) {
+        tarjeta.querySelectorAll('.pipeline-boton-mover').forEach(function (boton) {
+            boton.hidden = boton.dataset.etapaDestino === tarjeta.dataset.etapa;
+        });
+    }
+
+    function mover(tarjeta, nuevaEtapa) {
+        const columnaOrigen = tarjeta.closest('.pipeline-columna-cuerpo');
+        const columnaDestino = columnaDeEtapa(nuevaEtapa);
+        if (!columnaDestino || columnaDestino === columnaOrigen) {
+            return;
+        }
+
+        const etapaAnterior = tarjeta.dataset.etapa;
+        tarjeta.dataset.etapa = nuevaEtapa;
+        columnaDestino.appendChild(tarjeta);
+        actualizarColumna(columnaOrigen);
+        actualizarColumna(columnaDestino);
+        actualizarBotonesVisibles(tarjeta);
+
+        fetch(`/clientes/${tarjeta.dataset.id}/cambiar-etapa`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ csrf_token: csrfToken, etapa: nuevaEtapa })
+        })
+            .then(function (respuesta) {
+                return respuesta.json();
+            })
+            .then(function (datos) {
+                if (!datos.exito) {
+                    tarjeta.dataset.etapa = etapaAnterior;
+                    columnaOrigen.appendChild(tarjeta);
+                    actualizarColumna(columnaOrigen);
+                    actualizarColumna(columnaDestino);
+                    actualizarBotonesVisibles(tarjeta);
+                }
+            })
+            .catch(function () {
+                tarjeta.dataset.etapa = etapaAnterior;
+                columnaOrigen.appendChild(tarjeta);
+                actualizarColumna(columnaOrigen);
+                actualizarColumna(columnaDestino);
+                actualizarBotonesVisibles(tarjeta);
+            });
+    }
+
+    tablero.querySelectorAll('.pipeline-tarjeta').forEach(function (tarjeta) {
+        tarjeta.querySelectorAll('.pipeline-boton-mover').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                mover(tarjeta, boton.dataset.etapaDestino);
+            });
+        });
+    });
+}
+
 function inicializarFotoPerfil() {
     const input = document.getElementById('foto_perfil');
     if (!input) {
@@ -1014,23 +2303,36 @@ function inicializarFotoPerfil() {
 }
 
 function inicializarBuscadores() {
-    inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda');
+    inicializarBuscadorTabla('buscador-clientes', 'tabla-clientes', 'estado-sin-resultados', 'boton-limpiar-busqueda', 'filtro-etapa-clientes');
     inicializarBuscadorTabla('buscador-proyectos', 'tabla-proyectos', 'estado-sin-resultados-proyectos', 'boton-limpiar-busqueda-proyectos');
     inicializarBuscadorTabla('buscador-pagos', 'tabla-pagos', 'estado-sin-resultados-pagos', 'boton-limpiar-busqueda-pagos');
     inicializarBuscadorTabla('buscador-notas', 'tabla-notas', 'estado-sin-resultados-notas', 'boton-limpiar-busqueda-notas');
+    inicializarBuscadorTabla('buscador-tareas', 'tabla-tareas', 'estado-sin-resultados-tareas', 'boton-limpiar-busqueda-tareas');
+    inicializarBuscadorTabla('buscador-gastos', 'tabla-gastos', 'estado-sin-resultados-gastos', 'boton-limpiar-busqueda-gastos');
 }
 
 document.addEventListener('DOMContentLoaded', inicializarBotonTema);
 document.addEventListener('DOMContentLoaded', inicializarBotonesCarga);
 document.addEventListener('DOMContentLoaded', inicializarMenuMobile);
 document.addEventListener('DOMContentLoaded', inicializarMenusDesplegables);
+document.addEventListener('DOMContentLoaded', inicializarColumnasClientes);
 document.addEventListener('DOMContentLoaded', inicializarBuscadores);
 document.addEventListener('DOMContentLoaded', inicializarZonaArchivo);
 document.addEventListener('DOMContentLoaded', inicializarFotoPerfil);
+document.addEventListener('DOMContentLoaded', inicializarPipeline);
 document.addEventListener('DOMContentLoaded', inicializarModalCliente);
 document.addEventListener('DOMContentLoaded', inicializarModalProyecto);
 document.addEventListener('DOMContentLoaded', inicializarModalPago);
 document.addEventListener('DOMContentLoaded', inicializarModalNota);
+document.addEventListener('DOMContentLoaded', inicializarModalTarea);
+document.addEventListener('DOMContentLoaded', inicializarModalGasto);
+document.addEventListener('DOMContentLoaded', inicializarModalCotizacion);
+document.addEventListener('DOMContentLoaded', inicializarModalFactura);
+document.addEventListener('DOMContentLoaded', inicializarFiltroFacturaPorProyecto);
+document.addEventListener('DOMContentLoaded', inicializarCopiarEnlace);
+document.addEventListener('DOMContentLoaded', inicializarChecklist);
 document.addEventListener('DOMContentLoaded', inicializarModalUsuario);
+document.addEventListener('DOMContentLoaded', inicializarModalDefinicionCampo);
+document.addEventListener('DOMContentLoaded', inicializarModalEtapa);
 document.addEventListener('DOMContentLoaded', inicializarTogglesPassword);
 document.addEventListener('DOMContentLoaded', inicializarConfirmacionEliminar);

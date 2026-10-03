@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}{{ gasto[2] }} · CRM Agencia{% endblock %}
+
+{% block content %}
+    <a href="/gastos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a gastos</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <div class="pago-monto-fila">
+                <span class="icono-chip icono-chip-pagos">{{ icono('gastos', tamano=19) }}</span>
+                <h1>${{ gasto[3] | monto }}</h1>
+            </div>
+            <p class="encabezado-descripcion">{{ gasto[2] }}</p>
+        </div>
+        <div class="encabezado-acciones">
+            {% if gasto[7] %}
+            <a href="/static/{{ gasto[7] }}" target="_blank" rel="noopener" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Ver comprobante</a>
+            {% endif %}
+            <button
+                type="button"
+                class="btn btn-secundario boton-editar-gasto"
+                data-id="{{ gasto[0] }}"
+                data-proyecto-id="{{ gasto[1] }}"
+                data-descripcion="{{ gasto[2] }}"
+                data-monto="{{ gasto[3] }}"
+                data-categoria="{{ gasto[4] }}"
+                data-proveedor="{{ gasto[5] or '' }}"
+                data-fecha="{{ gasto[6] or '' }}"
+                data-redirigir-a="/gastos/{{ gasto[0] }}"
+            >
+                {{ icono('editar', tamano=16) }} Editar gasto
+            </button>
+            {% if rol_actual == 'admin' %}
+            <form
+                method="POST"
+                action="/gastos/{{ gasto[0] }}/eliminar"
+                class="form-en-linea form-eliminar"
+                data-mensaje="¿Eliminar el gasto '{{ gasto[2] }}'? Esta acción no se puede deshacer."
+            >
+                <button type="submit" class="btn btn-peligro" data-tooltip="Eliminar" aria-label="Eliminar gasto">{{ icono('eliminar', tamano=16) }} Eliminar</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Detalles</h2>
+        <dl>
+            <dt>Categoría</dt>
+            <dd>{{ gasto[4] }}</dd>
+            <dt>Proveedor</dt>
+            <dd>{{ gasto[5] if gasto[5] else '—' }}</dd>
+            <dt>Fecha</dt>
+            <dd>{{ gasto[6] if gasto[6] else '—' }}</dd>
+            <dt>Proyecto</dt>
+            <dd><a href="/proyectos/{{ gasto[1] }}" class="enlace-sutil">{{ titulo_proyecto }}</a></dd>
+            <dt>Cliente</dt>
+            <dd>{% if cliente %}<a href="/clientes/{{ cliente[0] }}" class="enlace-sutil">{{ cliente[1] }}</a>{% else %}—{% endif %}</dd>
+        </dl>
+    </div>
+
+    <dialog id="modal-gasto" class="modal">
+        <form method="POST" id="formulario-gasto" class="formulario" enctype="multipart/form-data">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-pagos">{{ icono('gastos', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-gasto-titulo">Editar gasto</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-gasto" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-gasto-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-descripcion-gasto">Descripción</label>
+                    <input type="text" id="modal-descripcion-gasto" name="descripcion" placeholder="¿En qué se gastó?" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-proyecto_id-gasto">Proyecto</label>
+                    <select id="modal-proyecto_id-gasto" name="proyecto_id">
+                        {% for proyecto in proyectos %}
+                        <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-monto-gasto">Monto</label>
+                    <input type="number" step="0.01" min="0" id="modal-monto-gasto" name="monto" placeholder="0.00">
+                </div>
+                <div class="campo">
+                    <label for="modal-categoria-gasto">Categoría</label>
+                    <select id="modal-categoria-gasto" name="categoria">
+                        {% for categoria in categorias_gasto %}
+                        <option value="{{ categoria }}">{{ categoria }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-proveedor-gasto">Proveedor (opcional)</label>
+                    <input type="text" id="modal-proveedor-gasto" name="proveedor" placeholder="Opcional">
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-gasto">Fecha</label>
+                    <input type="date" id="modal-fecha-gasto" name="fecha">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-comprobante-gasto">Comprobante (opcional)</label>
+                    <input type="file" id="modal-comprobante-gasto" name="comprobante" accept=".png,.jpg,.jpeg,.webp,.pdf">
+                    {% if gasto[7] %}<p class="ayuda-campo">Ya tiene un comprobante cargado. Subí uno nuevo solo si querés reemplazarlo.</p>{% endif %}
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-gasto" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+{% endblock %}

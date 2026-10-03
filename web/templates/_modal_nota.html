@@ -1,0 +1,80 @@
+{% from "_iconos.html" import icono %}
+<dialog id="modal-nota" class="modal">
+  <form method="POST" id="formulario-nota" class="formulario">
+    <div class="modal-encabezado">
+      <div class="modal-encabezado-info">
+        <span class="icono-chip icono-chip-notas"
+          >{{ icono('notas', tamano=19) }}</span
+        >
+        <div>
+          <h2 id="modal-nota-titulo">Nueva nota</h2>
+        </div>
+      </div>
+      <button
+        type="button"
+        id="boton-cerrar-modal-nota"
+        class="btn-cerrar-modal"
+        aria-label="Cerrar"
+      >
+        {{ icono('cerrar', tamano=18) }}
+      </button>
+    </div>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div id="modal-nota-error" class="flash flash-error" role="alert" hidden></div>
+
+    <div id="seccion-ia-nota" class="tarjeta-ia-generador">
+      <div class="campo">
+        <label for="modal-palabras-clave">Redactar con IA (opcional)</label>
+        <div class="campo-con-boton-lateral">
+          <input
+            type="text"
+            id="modal-palabras-clave"
+            placeholder="Palabras clave, ej: reunión, presupuesto aprobado"
+          />
+          <button
+            type="button"
+            id="boton-generar-ia-nota"
+            class="btn btn-secundario btn-sm"
+            data-cargando="Generando..."
+          >
+            {{ icono('ia-destello', tamano=14) }} Generar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-campos-grid">
+      <div class="campo">
+        <label for="modal-cliente_id-nota">Cliente</label>
+        <select id="modal-cliente_id-nota" name="cliente_id" autofocus>
+          {% for cliente in clientes %}
+          <option value="{{ cliente[0] }}">{{ cliente[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="modal-fecha-nota">Fecha</label>
+        <input
+          type="date"
+          id="modal-fecha-nota"
+          name="fecha"
+          value="{{ fecha_hoy }}"
+        />
+      </div>
+      <div class="campo campo-ancho">
+        <label for="modal-contenido">Contenido</label>
+        <textarea id="modal-contenido" name="contenido" rows="4"></textarea>
+      </div>
+    </div>
+    <div class="acciones-formulario">
+      <button
+        type="button"
+        id="boton-cancelar-modal-nota"
+        class="btn btn-secundario"
+      >
+        Cancelar
+      </button>
+      <input type="submit" value="Guardar" data-cargando="Guardando..." />
+    </div>
+  </form>
+</dialog>

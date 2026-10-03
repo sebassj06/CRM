@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}Campos personalizados · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set etiquetas_tipo = {'texto': 'Texto', 'numero': 'Número', 'fecha': 'Fecha', 'seleccion': 'Selección'} %}
+
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Campos personalizados</h1>
+            <p class="encabezado-descripcion">Agregá tus propios campos extra para Clientes y Proyectos, sin tocar código.</p>
+        </div>
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo-con-accion">
+            <h2>Clientes</h2>
+            <button type="button" class="btn btn-primario btn-sm boton-nuevo-campo-personalizado" data-entidad="clientes">
+                {{ icono('mas', tamano=14) }} Nuevo campo
+            </button>
+        </div>
+        {% if definiciones_clientes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Etiqueta</th>
+                    <th>Tipo</th>
+                    <th>Obligatorio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for definicion in definiciones_clientes %}
+                <tr>
+                    <td data-label="Etiqueta">{{ definicion[4] }}</td>
+                    <td data-label="Tipo">{{ etiquetas_tipo.get(definicion[5], definicion[5]) }}</td>
+                    <td data-label="Obligatorio">{{ 'Sí' if definicion[8] else 'No' }}</td>
+                    <td data-label="Acciones">
+                        <div class="acciones-fila">
+                            <button
+                                type="button"
+                                class="btn btn-secundario btn-sm btn-icono boton-editar-campo-personalizado"
+                                data-tooltip="Editar" aria-label="Editar campo"
+                                data-id="{{ definicion[0] }}"
+                                data-entidad="{{ definicion[2] }}"
+                                data-nombre-campo="{{ definicion[3] }}"
+                                data-etiqueta="{{ definicion[4] }}"
+                                data-tipo="{{ definicion[5] }}"
+                                data-opciones="{{ definicion[6] or '' }}"
+                                data-obligatorio="{{ '1' if definicion[8] else '0' }}"
+                            >
+                                {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                            </button>
+                            <form
+                                method="POST"
+                                action="/configuracion/campos/{{ definicion[0] }}/eliminar"
+                                class="form-en-linea form-eliminar"
+                                data-mensaje="¿Eliminar el campo '{{ definicion[4] }}'? Los datos ya guardados con este campo no se van a borrar, pero deja de poder editarse desde el formulario."
+                            >
+                                <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar campo">
+                                    {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                                </button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="texto-vacio">Todavía no agregaste campos personalizados para Clientes.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo-con-accion">
+            <h2>Proyectos</h2>
+            <button type="button" class="btn btn-primario btn-sm boton-nuevo-campo-personalizado" data-entidad="proyectos">
+                {{ icono('mas', tamano=14) }} Nuevo campo
+            </button>
+        </div>
+        {% if definiciones_proyectos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Etiqueta</th>
+                    <th>Tipo</th>
+                    <th>Obligatorio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for definicion in definiciones_proyectos %}
+                <tr>
+                    <td data-label="Etiqueta">{{ definicion[4] }}</td>
+                    <td data-label="Tipo">{{ etiquetas_tipo.get(definicion[5], definicion[5]) }}</td>
+                    <td data-label="Obligatorio">{{ 'Sí' if definicion[8] else 'No' }}</td>
+                    <td data-label="Acciones">
+                        <div class="acciones-fila">
+                            <button
+                                type="button"
+                                class="btn btn-secundario btn-sm btn-icono boton-editar-campo-personalizado"
+                                data-tooltip="Editar" aria-label="Editar campo"
+                                data-id="{{ definicion[0] }}"
+                                data-entidad="{{ definicion[2] }}"
+                                data-nombre-campo="{{ definicion[3] }}"
+                                data-etiqueta="{{ definicion[4] }}"
+                                data-tipo="{{ definicion[5] }}"
+                                data-opciones="{{ definicion[6] or '' }}"
+                                data-obligatorio="{{ '1' if definicion[8] else '0' }}"
+                            >
+                                {{ icono('editar', tamano=15) }}<span class="texto-boton">Editar</span>
+                            </button>
+                            <form
+                                method="POST"
+                                action="/configuracion/campos/{{ definicion[0] }}/eliminar"
+                                class="form-en-linea form-eliminar"
+                                data-mensaje="¿Eliminar el campo '{{ definicion[4] }}'? Los datos ya guardados con este campo no se van a borrar, pero deja de poder editarse desde el formulario."
+                            >
+                                <button type="submit" class="btn btn-peligro btn-sm btn-icono" data-tooltip="Eliminar" aria-label="Eliminar campo">
+                                    {{ icono('eliminar', tamano=15) }}<span class="texto-boton">Eliminar</span>
+                                </button>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="texto-vacio">Todavía no agregaste campos personalizados para Proyectos.</p>
+        {% endif %}
+    </div>
+
+    <dialog id="modal-campo-personalizado" class="modal">
+        <form method="POST" action="/configuracion/campos/nuevo" id="formulario-campo-personalizado" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-clientes">{{ icono('configuracion', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-campo-personalizado-titulo">Nuevo campo personalizado</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-campo-personalizado" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-campo-personalizado-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo" hidden>
+                    <label for="campo-nombre-interno">Nombre interno</label>
+                    <input type="text" id="campo-nombre-interno" disabled>
+                </div>
+                <div class="campo">
+                    <label for="campo-entidad">Aplica a</label>
+                    <select id="campo-entidad" name="entidad">
+                        <option value="clientes">Clientes</option>
+                        <option value="proyectos">Proyectos</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="campo-tipo">Tipo</label>
+                    <select id="campo-tipo" name="tipo">
+                        <option value="texto">Texto</option>
+                        <option value="numero">Número</option>
+                        <option value="fecha">Fecha</option>
+                        <option value="seleccion">Selección</option>
+                    </select>
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="campo-etiqueta">Etiqueta</label>
+                    <input type="text" id="campo-etiqueta" name="etiqueta" placeholder="Ej: Rubro, Dirección, Fecha de firma..." autofocus>
+                </div>
+                <div class="campo campo-ancho" id="campo-opciones-seleccion" hidden>
+                    <label for="campo-opciones">Opciones (separadas por coma)</label>
+                    <input type="text" id="campo-opciones" name="opciones" placeholder="Ej: Chico, Mediano, Grande">
+                </div>
+                <div class="campo campo-ancho">
+                    <label class="campo-checkbox">
+                        <input type="checkbox" id="campo-obligatorio" name="obligatorio">
+                        Campo obligatorio
+                    </label>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-campo-personalizado" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+{% endblock %}

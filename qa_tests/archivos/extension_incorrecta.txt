@@ -1,0 +1,2 @@
+nombre,email,telefono,empresa,notas,cliente_desde
+QA_Import TxtExt,qa_import_txtext@test.com,,,,

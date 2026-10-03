@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}{{ tarea[2] }} · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_prioridad = {'Baja': 'badge-completado', 'Media': 'badge-progreso', 'Alta': 'badge-alta'} %}
+    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+
+    <a href="/tareas" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a tareas</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <div class="pago-monto-fila">
+                <span class="icono-chip icono-chip-proyectos">{{ icono('lista', tamano=19) }}</span>
+                <h1>{{ tarea[2] }}</h1>
+            </div>
+            <p class="encabezado-descripcion">
+                <a href="/proyectos/{{ tarea[1] }}" class="enlace-sutil">{{ titulo_proyecto }}</a>
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <span class="badge {{ clases_prioridad.get(tarea[5], 'badge-pendiente') }}">{{ tarea[5] }}</span>
+            <span class="badge {{ clases_estado.get(tarea[6], 'badge-pendiente') }}">{{ tarea[6] }}</span>
+            {% if tarea[6] != 'Completado' %}
+            <form method="POST" action="/tareas/{{ tarea[0] }}/marcar-completado" class="form-en-linea">
+                <button type="submit" class="btn btn-secundario">{{ icono('check-circulo', tamano=16) }} Marcar completada</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
+            <button
+                type="button"
+                class="btn btn-secundario boton-editar-tarea"
+                data-id="{{ tarea[0] }}"
+                data-proyecto-id="{{ tarea[1] }}"
+                data-titulo="{{ tarea[2] }}"
+                data-descripcion="{{ tarea[3] or '' }}"
+                data-responsable-id="{{ tarea[4] or '' }}"
+                data-prioridad="{{ tarea[5] }}"
+                data-estado="{{ tarea[6] }}"
+                data-fecha-limite="{{ tarea[7] or '' }}"
+                data-redirigir-a="/tareas/{{ tarea[0] }}"
+            >
+                {{ icono('editar', tamano=16) }} Editar tarea
+            </button>
+            {% if rol_actual == 'admin' %}
+            <form
+                method="POST"
+                action="/tareas/{{ tarea[0] }}/eliminar"
+                class="form-en-linea form-eliminar"
+                data-mensaje="¿Eliminar la tarea '{{ tarea[2] }}'? Esta acción no se puede deshacer."
+            >
+                <button type="submit" class="btn btn-peligro" data-tooltip="Eliminar" aria-label="Eliminar tarea">{{ icono('eliminar', tamano=16) }} Eliminar</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="tarjeta">
+        <h2>Detalles</h2>
+        <dl>
+            <dt>Proyecto</dt>
+            <dd><a href="/proyectos/{{ tarea[1] }}" class="enlace-sutil">{{ titulo_proyecto }}</a></dd>
+            <dt>Responsable</dt>
+            <dd>{{ nombre_responsable if nombre_responsable else 'Sin asignar' }}</dd>
+            <dt>Fecha límite</dt>
+            <dd>{{ tarea[7] if tarea[7] else '—' }}</dd>
+            {% if tarea[3] %}
+            <dt>Descripción</dt>
+            <dd>{{ tarea[3] }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+
+    <div class="tarjeta" id="tarjeta-checklist" data-tarea-id="{{ tarea[0] }}">
+        <h2>Checklist</h2>
+        <ul class="checklist" id="lista-checklist">
+            {% for subtarea in subtareas %}
+            <li class="checklist-item" data-id="{{ subtarea[0] }}">
+                <label>
+                    <input type="checkbox" class="checklist-checkbox" {{ 'checked' if subtarea[3] }}>
+                    <span class="checklist-texto {{ 'checklist-texto-completado' if subtarea[3] }}">{{ subtarea[2] }}</span>
+                </label>
+                <button type="button" class="btn btn-secundario btn-sm btn-icono boton-eliminar-subtarea" data-tooltip="Eliminar" aria-label="Eliminar ítem">
+                    {{ icono('eliminar', tamano=14) }}
+                </button>
+            </li>
+            {% else %}
+            <li class="texto-vacio" id="checklist-vacio">Sin ítems todavía. Agregá uno abajo.</li>
+            {% endfor %}
+        </ul>
+        <form id="formulario-subtarea" class="campo-con-boton-lateral">
+            <input type="text" id="input-nueva-subtarea" placeholder="Agregar un ítem al checklist...">
+            <button type="submit" class="btn btn-secundario btn-sm">{{ icono('mas', tamano=14) }} Agregar</button>
+        </form>
+    </div>
+
+    <dialog id="modal-tarea" class="modal">
+        <form method="POST" id="formulario-tarea" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('lista', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-tarea-titulo">Editar tarea</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-tarea" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-tarea-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-titulo-tarea">Título</label>
+                    <input type="text" id="modal-titulo-tarea" name="titulo" placeholder="¿Qué hay que hacer?" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-proyecto_id-tarea">Proyecto</label>
+                    <select id="modal-proyecto_id-tarea" name="proyecto_id">
+                        {% for proyecto in proyectos %}
+                        <option value="{{ proyecto[0] }}">{{ proyecto[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-responsable-tarea">Responsable</label>
+                    <select id="modal-responsable-tarea" name="responsable_id">
+                        <option value="">Sin asignar</option>
+                        {% for usuario in usuarios %}
+                        <option value="{{ usuario[0] }}">{{ usuario[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-prioridad-tarea">Prioridad</label>
+                    <select id="modal-prioridad-tarea" name="prioridad">
+                        {% for prioridad in prioridades %}
+                        <option value="{{ prioridad }}">{{ prioridad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-estado-tarea">Estado</label>
+                    <select id="modal-estado-tarea" name="estado">
+                        {% for estado in estados_tarea %}
+                        <option value="{{ estado }}">{{ estado }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-limite-tarea">Fecha límite</label>
+                    <input type="date" id="modal-fecha-limite-tarea" name="fecha_limite">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-descripcion-tarea">Descripción (opcional)</label>
+                    <textarea id="modal-descripcion-tarea" name="descripcion" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-tarea" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+{% endblock %}

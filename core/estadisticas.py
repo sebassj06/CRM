@@ -1,4 +1,5 @@
 from core.database import obtener_conexion
+from core.etapas import nombres_etapas_finales
 from datetime import date
 
 NOMBRES_MES = {1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
@@ -84,6 +85,7 @@ def estadisticas_dashboard(agencia_id):
     cobrado = total_cobrado(agencia_id)
     por_estado = proyectos_por_estado(agencia_id)
 
+    finales = nombres_etapas_finales(agencia_id)
     estados_con_porcentaje = []
     completados = 0
     for estado, cantidad in por_estado:
@@ -92,8 +94,8 @@ def estadisticas_dashboard(agencia_id):
         else:
             porcentaje = 0
         estados_con_porcentaje.append((estado, cantidad, porcentaje))
-        if estado == "Completado":
-            completados = cantidad
+        if estado in finales:
+            completados += cantidad
 
     if total_proyectos > 0:
         porcentaje_completado = round(completados / total_proyectos * 100)

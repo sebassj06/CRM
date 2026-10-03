@@ -5,8 +5,6 @@
 {% block title %}{{ proyecto[1] }} · CRM Agencia{% endblock %}
 
 {% block content %}
-    {% set clases_estado = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
-
     <a href="/proyectos" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a proyectos</a>
 
     <div class="encabezado-pagina">
@@ -18,7 +16,7 @@
         </div>
         <div class="encabezado-acciones">
             <span class="badge {{ clases_estado.get(proyecto[3], 'badge-pendiente') }}">{{ proyecto[3] }}</span>
-            {% if proyecto[3] != 'Completado' %}
+            {% if proyecto[3] not in nombres_etapas_finales %}
             <form method="POST" action="/proyectos/{{ proyecto[0] }}/marcar-completado" class="form-en-linea">
                 <button type="submit" class="btn btn-secundario">{{ icono('check-circulo', tamano=16) }} Marcar completado</button>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -33,6 +31,7 @@
                 data-estado="{{ proyecto[3] }}"
                 data-fecha-entrega="{{ proyecto[4] or '' }}"
                 data-presupuesto="{{ proyecto[6] if proyecto[6] is not none else '' }}"
+                data-campos='{{ (proyecto[8] if proyecto[8] is not none else {}) | tojson }}'
                 data-redirigir-a="/proyectos/{{ proyecto[0] }}"
             >
                 {{ icono('editar', tamano=16) }} Editar proyecto
@@ -67,7 +66,97 @@
                     {% endif %}
                 </dd>
             {% endif %}
+            <dt>Gastos</dt>
+            <dd>${{ total_gastos | monto }} {{ monto_convertido(total_gastos, moneda_actual, simbolo_actual, tasa_cambio) }}</dd>
+            <dt>Margen</dt>
+            <dd>
+                {% if margen >= 0 %}
+                    <span class="badge badge-completado">${{ margen | monto }}</span>
+                {% else %}
+                    <span class="badge badge-alta">-${{ (-margen) | monto }}</span>
+                {% endif %}
+            </dd>
         </dl>
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo-con-accion">
+            <h2>Gastos</h2>
+            <button type="button" class="btn btn-secundario btn-sm boton-nuevo-gasto-proyecto" data-proyecto-id="{{ proyecto[0] }}">
+                {{ icono('mas', tamano=14) }} Nuevo gasto
+            </button>
+        </div>
+        {% if gastos %}
+            <ul class="lista-registros">
+                {% for gasto in gastos %}
+                    <li class="registro-item">
+                        <div>
+                            <a href="/gastos/{{ gasto[0] }}" class="registro-monto">${{ gasto[3] | monto }}</a>
+                            <span class="texto-secundario">{{ gasto[2] }}</span>
+                        </div>
+                        <span class="texto-secundario">{{ gasto[4] }} · {{ gasto[6] if gasto[6] else 'Sin fecha' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="texto-vacio">Este proyecto todavía no tiene gastos registrados.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo-con-accion">
+            <h2>Tareas</h2>
+            <button type="button" class="btn btn-secundario btn-sm boton-nueva-tarea-proyecto" data-proyecto-id="{{ proyecto[0] }}">
+                {{ icono('mas', tamano=14) }} Nueva tarea
+            </button>
+        </div>
+        {% if tareas_total %}
+        <div class="barra-progreso">
+            <div class="barra-progreso-relleno" style="width: {{ (tareas_completadas / tareas_total * 100) | round | int }}%"></div>
+        </div>
+        <p class="texto-secundario">{{ tareas_completadas }} de {{ tareas_total }} completadas ({{ (tareas_completadas / tareas_total * 100) | round | int }}%)</p>
+        {% endif %}
+        {% if tareas %}
+            {% set clases_estado_tarea = {'Pendiente': 'badge-pendiente', 'En progreso': 'badge-progreso', 'Completado': 'badge-completado'} %}
+            <ul class="lista-registros">
+                {% for tarea in tareas %}
+                    <li class="registro-item">
+                        <div>
+                            <a href="/tareas/{{ tarea[0] }}" class="registro-monto">{{ tarea[2] }}</a>
+                            <span class="badge {{ clases_estado_tarea.get(tarea[6], 'badge-pendiente') }}">{{ tarea[6] }}</span>
+                        </div>
+                        <span class="texto-secundario">{{ usuarios_por_id.get(tarea[4], 'Sin asignar') }} · {{ tarea[7] if tarea[7] else 'Sin fecha límite' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="texto-vacio">Este proyecto todavía no tiene tareas.</p>
+        {% endif %}
+    </div>
+
+    <div class="tarjeta">
+        <div class="tarjeta-titulo-con-accion">
+            <h2>Facturas</h2>
+            <button type="button" class="btn btn-secundario btn-sm boton-nueva-factura-proyecto" data-proyecto-id="{{ proyecto[0] }}">
+                {{ icono('mas', tamano=14) }} Nueva factura
+            </button>
+        </div>
+        {% if facturas %}
+            {% set clases_estado_factura = {'Borrador': 'badge-pendiente', 'Emitida': 'badge-progreso', 'Pagada': 'badge-completado', 'Anulada': 'badge-alta'} %}
+            <ul class="lista-registros">
+                {% for factura in facturas %}
+                    <li class="registro-item">
+                        <div>
+                            <a href="/facturas/{{ factura[0] }}" class="registro-monto">{{ "F-%04d"|format(factura[2]) }}</a>
+                            <span class="badge {{ clases_estado_factura.get(factura[3], 'badge-pendiente') }}">{{ factura[3] }}</span>
+                        </div>
+                        <span class="texto-secundario">{{ factura[7] if factura[7] else 'Sin vencimiento' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="texto-vacio">Este proyecto todavía no tiene facturas.</p>
+        {% endif %}
     </div>
 
     <div class="tarjeta">
@@ -143,9 +232,9 @@
                 <div class="campo">
                     <label for="modal-estado">Estado</label>
                     <select id="modal-estado" name="estado">
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En progreso">En progreso</option>
-                        <option value="Completado">Completado</option>
+                        {% for etapa in etapas_proyecto %}
+                        <option value="{{ etapa[2] }}">{{ etapa[2] }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="campo">
@@ -156,6 +245,25 @@
                     <label for="modal-presupuesto">Presupuesto (opcional)</label>
                     <input type="number" step="0.01" min="0" id="modal-presupuesto" name="presupuesto" placeholder="0.00">
                 </div>
+                {% for definicion in definiciones_campo %}
+                <div class="campo{{ ' campo-ancho' if definicion[5] == 'texto' }}">
+                    <label for="modal-campo-{{ definicion[0] }}">{{ definicion[4] }}{% if definicion[8] %} *{% endif %}</label>
+                    {% if definicion[5] == 'seleccion' %}
+                    <select id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                        <option value=""></option>
+                        {% for opcion in (definicion[6] or '').split(',') %}
+                        <option value="{{ opcion.strip() }}">{{ opcion.strip() }}</option>
+                        {% endfor %}
+                    </select>
+                    {% elif definicion[5] == 'numero' %}
+                    <input type="number" step="any" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% elif definicion[5] == 'fecha' %}
+                    <input type="date" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% else %}
+                    <input type="text" id="modal-campo-{{ definicion[0] }}" name="campo_{{ definicion[3] }}">
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
             <div class="acciones-formulario">
                 <button type="button" id="boton-cancelar-modal-proyecto" class="btn btn-secundario">Cancelar</button>
@@ -163,4 +271,135 @@
             </div>
         </form>
     </dialog>
+
+    <dialog id="modal-tarea" class="modal">
+        <form method="POST" id="formulario-tarea" class="formulario">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-proyectos">{{ icono('lista', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-tarea-titulo">Nueva tarea</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-tarea" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-tarea-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-titulo-tarea">Título</label>
+                    <input type="text" id="modal-titulo-tarea" name="titulo" placeholder="¿Qué hay que hacer?" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-proyecto_id-tarea">Proyecto</label>
+                    <select id="modal-proyecto_id-tarea" name="proyecto_id">
+                        {% for p in proyectos %}
+                        <option value="{{ p[0] }}">{{ p[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-responsable-tarea">Responsable</label>
+                    <select id="modal-responsable-tarea" name="responsable_id">
+                        <option value="">Sin asignar</option>
+                        {% for usuario in usuarios %}
+                        <option value="{{ usuario[0] }}">{{ usuario[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-prioridad-tarea">Prioridad</label>
+                    <select id="modal-prioridad-tarea" name="prioridad">
+                        {% for prioridad in prioridades %}
+                        <option value="{{ prioridad }}" {{ 'selected' if prioridad == 'Media' }}>{{ prioridad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-estado-tarea">Estado</label>
+                    <select id="modal-estado-tarea" name="estado">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En progreso">En progreso</option>
+                        <option value="Completado">Completado</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-limite-tarea">Fecha límite</label>
+                    <input type="date" id="modal-fecha-limite-tarea" name="fecha_limite">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-descripcion-tarea">Descripción (opcional)</label>
+                    <textarea id="modal-descripcion-tarea" name="descripcion" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-tarea" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="modal-gasto" class="modal">
+        <form method="POST" id="formulario-gasto" class="formulario" enctype="multipart/form-data">
+            <div class="modal-encabezado">
+                <div class="modal-encabezado-info">
+                    <span class="icono-chip icono-chip-pagos">{{ icono('gastos', tamano=19) }}</span>
+                    <div>
+                        <h2 id="modal-gasto-titulo">Nuevo gasto</h2>
+                    </div>
+                </div>
+                <button type="button" id="boton-cerrar-modal-gasto" class="btn-cerrar-modal" aria-label="Cerrar">
+                    {{ icono('cerrar', tamano=18) }}
+                </button>
+            </div>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="modal-gasto-error" class="flash flash-error" role="alert" hidden></div>
+            <div class="modal-campos-grid">
+                <div class="campo campo-ancho">
+                    <label for="modal-descripcion-gasto">Descripción</label>
+                    <input type="text" id="modal-descripcion-gasto" name="descripcion" placeholder="¿En qué se gastó?" autofocus>
+                </div>
+                <div class="campo">
+                    <label for="modal-proyecto_id-gasto">Proyecto</label>
+                    <select id="modal-proyecto_id-gasto" name="proyecto_id">
+                        {% for p in proyectos %}
+                        <option value="{{ p[0] }}">{{ p[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-monto-gasto">Monto</label>
+                    <input type="number" step="0.01" min="0" id="modal-monto-gasto" name="monto" placeholder="0.00">
+                </div>
+                <div class="campo">
+                    <label for="modal-categoria-gasto">Categoría</label>
+                    <select id="modal-categoria-gasto" name="categoria">
+                        {% for categoria in categorias_gasto %}
+                        <option value="{{ categoria }}">{{ categoria }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="modal-proveedor-gasto">Proveedor (opcional)</label>
+                    <input type="text" id="modal-proveedor-gasto" name="proveedor" placeholder="Opcional">
+                </div>
+                <div class="campo">
+                    <label for="modal-fecha-gasto">Fecha</label>
+                    <input type="date" id="modal-fecha-gasto" name="fecha">
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="modal-comprobante-gasto">Comprobante (opcional)</label>
+                    <input type="file" id="modal-comprobante-gasto" name="comprobante" accept=".png,.jpg,.jpeg,.webp,.pdf">
+                </div>
+            </div>
+            <div class="acciones-formulario">
+                <button type="button" id="boton-cancelar-modal-gasto" class="btn btn-secundario">Cancelar</button>
+                <input type="submit" value="Guardar" data-cargando="Guardando...">
+            </div>
+        </form>
+    </dialog>
+
+    {% include "_modal_factura.html" %}
 {% endblock %}

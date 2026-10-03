@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        if (localStorage.getItem('tema') === 'oscuro') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+    <title>Cotización de {{ agencia[1] if agencia else 'CRM Agencia' }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% from "_iconos.html" import icono %}
+    <div class="cotizacion-publica-layout">
+        <main class="cotizacion-publica-contenido">
+            {% with mensajes = get_flashed_messages(with_categories=true) %}
+                {% if mensajes %}
+                    <div class="flash-contenedor">
+                        {% for categoria, mensaje in mensajes %}
+                            <div class="flash flash-{{ categoria }}">{{ mensaje }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="encabezado-pagina">
+                <div>
+                    <p class="encabezado-descripcion">{{ agencia[1] if agencia else 'CRM Agencia' }}</p>
+                    <h1>{{ cotizacion[2] }}</h1>
+                    {% if cliente %}<p class="encabezado-descripcion">Para {{ cliente[1] }}</p>{% endif %}
+                </div>
+            </div>
+
+            {% if cotizacion[3] == 'Aceptada' %}
+                <div class="tarjeta cotizacion-respuesta-estado cotizacion-respuesta-aceptada">
+                    {{ icono('check-circulo', tamano=20) }} Ya aceptaste esta cotización.
+                </div>
+            {% elif cotizacion[3] == 'Rechazada' %}
+                <div class="tarjeta cotizacion-respuesta-estado">
+                    {{ icono('cerrar', tamano=20) }} Marcaste esta cotización como rechazada.
+                </div>
+            {% elif vencida %}
+                <div class="tarjeta cotizacion-respuesta-estado">
+                    {{ icono('reloj', tamano=20) }} Esta cotización venció el {{ cotizacion[6] }}. Contactá a {{ agencia[1] if agencia else 'la agencia' }} para una nueva propuesta.
+                </div>
+            {% endif %}
+
+            <div class="tarjeta">
+                <h2>Ítems</h2>
+                <table class="tabla-items-cotizacion">
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cant.</th>
+                            <th>Precio</th>
+                            <th>Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item[2] }}</td>
+                            <td>{{ item[3] | monto }}</td>
+                            <td>${{ item[4] | monto }}</td>
+                            <td>${{ (item[3] * item[4]) | monto }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <dl class="cotizacion-resumen-detalle">
+                    <dt>Subtotal</dt>
+                    <dd>${{ subtotal | monto }}</dd>
+                    {% if cotizacion[4] %}
+                    <dt>Descuento</dt>
+                    <dd>-${{ cotizacion[4] | monto }}</dd>
+                    {% endif %}
+                    {% if cotizacion[5] %}
+                    <dt>Impuesto ({{ cotizacion[5] | monto }}%)</dt>
+                    <dd></dd>
+                    {% endif %}
+                    <dt>Total</dt>
+                    <dd class="cotizacion-resumen-total">${{ total | monto }}</dd>
+                </dl>
+                {% if cotizacion[7] %}
+                    <h3>Notas</h3>
+                    <p>{{ cotizacion[7] }}</p>
+                {% endif %}
+            </div>
+
+            {% if cotizacion[3] == 'Enviada' and not vencida %}
+            <div class="tarjeta cotizacion-respuesta-acciones">
+                <h2>¿Qué decidís?</h2>
+                <div class="acciones-formulario">
+                    <form method="POST" action="/cotizacion/{{ cotizacion[8] }}/responder" class="form-en-linea">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="respuesta" value="Rechazada">
+                        <button type="submit" class="btn btn-secundario">{{ icono('cerrar', tamano=16) }} Rechazar</button>
+                    </form>
+                    <form method="POST" action="/cotizacion/{{ cotizacion[8] }}/responder" class="form-en-linea">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="respuesta" value="Aceptada">
+                        <button type="submit" class="btn btn-primario">{{ icono('check-circulo', tamano=16) }} Aceptar cotización</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

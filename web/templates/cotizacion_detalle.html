@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block title %}{{ cotizacion[2] }} · CRM Agencia{% endblock %}
+
+{% block content %}
+    {% set clases_estado = {'Borrador': 'badge-pendiente', 'Enviada': 'badge-progreso', 'Aceptada': 'badge-completado', 'Rechazada': 'badge-alta'} %}
+
+    <a href="/cotizaciones" class="enlace-volver">{{ icono('flecha-izquierda', tamano=16) }} Volver a cotizaciones</a>
+
+    <div class="encabezado-pagina">
+        <div>
+            <div class="pago-monto-fila">
+                <span class="icono-chip icono-chip-clientes">{{ icono('cotizaciones', tamano=19) }}</span>
+                <h1>{{ cotizacion[2] }}</h1>
+            </div>
+            <p class="encabezado-descripcion">
+                {% if cliente %}<a href="/clientes/{{ cliente[0] }}" class="enlace-sutil">{{ cliente[1] }}</a>{% endif %}
+            </p>
+        </div>
+        <div class="encabezado-acciones">
+            <span class="badge {{ clases_estado.get(cotizacion[3], 'badge-pendiente') }}">{{ cotizacion[3] }}</span>
+            {% if vencida %}<span class="etiqueta-vencida">{{ icono('reloj', tamano=13) }} Vencida</span>{% endif %}
+        </div>
+    </div>
+
+    <div class="encabezado-acciones cotizacion-acciones-secundarias">
+        <a href="/cotizaciones/{{ cotizacion[0] }}/pdf" class="btn btn-secundario">{{ icono('descargar', tamano=16) }} Descargar PDF</a>
+        <button
+            type="button"
+            class="btn btn-secundario boton-editar-cotizacion"
+            data-id="{{ cotizacion[0] }}"
+            data-cliente-id="{{ cotizacion[1] }}"
+            data-titulo="{{ cotizacion[2] }}"
+            data-descuento="{{ cotizacion[4] }}"
+            data-impuesto="{{ cotizacion[5] }}"
+            data-fecha-vencimiento="{{ cotizacion[6] or '' }}"
+            data-notas="{{ cotizacion[7] or '' }}"
+            data-items='{{ items_json | tojson }}'
+            data-redirigir-a="/cotizaciones/{{ cotizacion[0] }}"
+        >
+            {{ icono('editar', tamano=16) }} Editar
+        </button>
+        {% if cotizacion[3] == 'Borrador' %}
+        <form method="POST" action="/cotizaciones/{{ cotizacion[0] }}/marcar-enviada" class="form-en-linea">
+            <button type="submit" class="btn btn-secundario">{{ icono('correo', tamano=16) }} Marcar como enviada</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+        {% if cotizacion[3] == 'Aceptada' and not cotizacion[9] %}
+        <form method="POST" action="/cotizaciones/{{ cotizacion[0] }}/convertir" class="form-en-linea">
+            <button type="submit" class="btn btn-primario">{{ icono('proyectos', tamano=16) }} Convertir en proyecto</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% elif cotizacion[9] %}
+        <a href="/proyectos/{{ cotizacion[9] }}" class="btn btn-secundario">{{ icono('proyectos', tamano=16) }} Ver proyecto convertido</a>
+        {% endif %}
+        {% if rol_actual == 'admin' %}
+        <form
+            method="POST"
+            action="/cotizaciones/{{ cotizacion[0] }}/eliminar"
+            class="form-en-linea form-eliminar"
+            data-mensaje="¿Eliminar la cotización '{{ cotizacion[2] }}'? Esta acción no se puede deshacer."
+        >
+            <button type="submit" class="btn btn-peligro" data-tooltip="Eliminar" aria-label="Eliminar cotización">{{ icono('eliminar', tamano=16) }} Eliminar</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+    </div>
+
+    {% if cotizacion[3] != 'Borrador' %}
+    <div class="tarjeta cotizacion-enlace-publico">
+        <h2>Enlace para el cliente</h2>
+        <p class="texto-secundario">Compartí este enlace para que el cliente vea la cotización y la acepte o rechace, sin necesidad de iniciar sesión.</p>
+        <div class="campo-con-boton-lateral">
+            <input type="text" readonly id="input-enlace-publico" value="{{ enlace_publico }}">
+            <button type="button" id="boton-copiar-enlace" class="btn btn-secundario btn-sm">{{ icono('enlace', tamano=14) }} Copiar</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="tarjeta">
+        <h2>Ítems</h2>
+        <table class="tabla-items-cotizacion">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th>Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item[2] }}</td>
+                    <td>{{ item[3] | monto }}</td>
+                    <td>${{ item[4] | monto }}</td>
+                    <td>${{ (item[3] * item[4]) | monto }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <dl class="cotizacion-resumen-detalle">
+            <dt>Subtotal</dt>
+            <dd>${{ subtotal | monto }}</dd>
+            {% if cotizacion[4] %}
+            <dt>Descuento</dt>
+            <dd>-${{ cotizacion[4] | monto }}</dd>
+            {% endif %}
+            {% if cotizacion[5] %}
+            <dt>Impuesto ({{ cotizacion[5] | monto }}%)</dt>
+            <dd></dd>
+            {% endif %}
+            <dt>Total</dt>
+            <dd class="cotizacion-resumen-total">${{ total | monto }}</dd>
+        </dl>
+        {% if cotizacion[7] %}
+        <h3>Notas</h3>
+        <p>{{ cotizacion[7] }}</p>
+        {% endif %}
+    </div>
+
+    {% include "_modal_cotizacion.html" %}
+{% endblock %}
